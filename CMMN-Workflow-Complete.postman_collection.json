@@ -1,0 +1,307 @@
+{
+	"info": {
+		"name": "CMMN Workflow API - Complete",
+		"description": "Complete API collection for CMMN Workflow Service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		}
+	],
+	"item": [
+		{
+			"name": "Workflows",
+			"item": [
+				{
+					"name": "Create Workflow (Working)",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Monthly Report Workflow\",\n  \"scheduledTime\": \"2024-01-04T09:00:00\",\n  \"frequencyPattern\": \"monthly-4th-working-day\",\n  \"drawflowData\": {\n    \"nodes\": {\n      \"1\": {\"name\": \"upload T1 file\", \"type\": \"UPLOAD\"},\n      \"2\": {\"name\": \"upload T2 file\", \"type\": \"UPLOAD\"},\n      \"3\": {\"name\": \"download files\", \"type\": \"DOWNLOAD\"},\n      \"4\": {\"name\": \"review files\", \"type\": \"REVIEW\"},\n      \"5\": {\"name\": \"consolidate reports\", \"type\": \"CONSOLIDATE\"}\n    }\n  },\n  \"tasks\": [\n    {\"id\": \"1\", \"name\": \"upload T1 file\", \"taskType\": \"UPLOAD\", \"position\": {\"x\": 100, \"y\": 100}, \"connections\": [\"3\"]},\n    {\"id\": \"2\", \"name\": \"upload T2 file\", \"taskType\": \"UPLOAD\", \"position\": {\"x\": 100, \"y\": 200}, \"connections\": [\"3\"]},\n    {\"id\": \"3\", \"name\": \"download files\", \"taskType\": \"DOWNLOAD\", \"position\": {\"x\": 300, \"y\": 150}, \"connections\": [\"4\"]},\n    {\"id\": \"4\", \"name\": \"review files\", \"taskType\": \"REVIEW\", \"position\": {\"x\": 500, \"y\": 150}, \"connections\": [\"5\", \"2\"]},\n    {\"id\": \"5\", \"name\": \"consolidate reports\", \"taskType\": \"CONSOLIDATE\", \"position\": {\"x\": 700, \"y\": 150}, \"connections\": []}\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/workflows/definition",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "workflows", "definition"]
+						}
+					}
+				},
+				{
+					"name": "Create Minimal Workflow (Fallback)",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Simple Test Workflow\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/workflows/definition",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "workflows", "definition"]
+						}
+					}
+				},
+{
+					"name": "Get All Workflows (N+1 Optimized)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/workflows",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "workflows"]
+						}
+					}
+				},
+				{
+					"name": "Get Workflow by ID (N+1 Optimized)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/workflows/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "workflows", "1"]
+						}
+					}
+				},
+				{
+					"name": "Start Workflow Case (Manual)",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/workflows/1/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "workflows", "1", "start"]
+						}
+					}
+				}
+
+			]
+		},
+		{
+			"name": "Tasks",
+			"item": [
+				{
+					"name": "Get Task by ID (with Files)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Task",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks?name=Upload Task&workflowId=1&taskType=UPLOAD",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks"],
+							"query": [
+								{"key": "name", "value": "Upload Task"},
+								{"key": "workflowId", "value": "1"},
+								{"key": "taskType", "value": "UPLOAD"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Upload File to Task",
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/upload",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "upload"]
+						}
+					}
+				},
+				{
+					"name": "Complete Task",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "complete"]
+						}
+					}
+				},
+				{
+					"name": "Get Task Files",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/files",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "files"]
+						}
+					}
+				},
+				{
+					"name": "Consolidate Files",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/consolidate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "consolidate"]
+						}
+					}
+				},
+				{
+					"name": "Get Tasks by Workflow (with Files)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/workflow/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "workflow", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Files",
+			"item": [
+				{
+					"name": "Upload File to Task (Alternative)",
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/files/upload/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "files", "upload", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Files by Task",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/files/task/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "files", "task", "1"]
+						}
+					}
+				},
+				{
+					"name": "Download File",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/files/1/download",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "files", "1", "download"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "CMMN",
+			"item": [
+				{
+					"name": "Create Case Instance",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/cmmn/case/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cmmn", "case", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Case Instance",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cmmn/case/case-instance-id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cmmn", "case", "case-instance-id"]
+						}
+					}
+				},
+				{
+					"name": "Get Case Tasks",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cmmn/case/case-instance-id/tasks",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cmmn", "case", "case-instance-id", "tasks"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Case Hierarchy",
+			"item": [
+				{
+					"name": "Get Workflow by Case ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cases/case-instance-id/workflow",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cases", "case-instance-id", "workflow"]
+						}
+					}
+				},
+				{
+					"name": "Get Tasks by Case ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cases/case-instance-id/tasks",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cases", "case-instance-id", "tasks"]
+						}
+					}
+				},
+				{
+					"name": "Get All Files by Case ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cases/case-instance-id/files",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cases", "case-instance-id", "files"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,51 @@
+{
+  "name": "Monthly Report Workflow",
+  "scheduledTime": "2024-01-04T09:00:00",
+  "frequencyPattern": "monthly-4th-working-day",
+  "drawflowData": {
+    "nodes": {
+      "1": {"name": "upload T1 file", "type": "UPLOAD"},
+      "2": {"name": "upload T2 file", "type": "UPLOAD"},
+      "3": {"name": "download files", "type": "DOWNLOAD"},
+      "4": {"name": "review files", "type": "REVIEW"},
+      "5": {"name": "consolidate reports", "type": "CONSOLIDATE"}
+    }
+  },
+  "tasks": [
+    {
+      "id": "1",
+      "name": "upload T1 file",
+      "taskType": "UPLOAD",
+      "position": {"x": 100, "y": 100},
+      "connections": ["3"]
+    },
+    {
+      "id": "2", 
+      "name": "upload T2 file",
+      "taskType": "UPLOAD",
+      "position": {"x": 100, "y": 200},
+      "connections": ["3"]
+    },
+    {
+      "id": "3",
+      "name": "download files",
+      "taskType": "DOWNLOAD", 
+      "position": {"x": 300, "y": 150},
+      "connections": ["4"]
+    },
+    {
+      "id": "4",
+      "name": "review files",
+      "taskType": "REVIEW",
+      "position": {"x": 500, "y": 150},
+      "connections": ["5", "2"]
+    },
+    {
+      "id": "5",
+      "name": "consolidate reports",
+      "taskType": "CONSOLIDATE",
+      "position": {"x": 700, "y": 150},
+      "connections": []
+    }
+  ]
+}
