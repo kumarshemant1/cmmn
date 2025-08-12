@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface WorkflowRepository extends JpaRepository<Workflow, Long> {
-    Workflow findByCmmnCaseId(String cmmnCaseId);
+    Workflow findByCaseInstanceId(String caseInstanceId);
     
     @org.springframework.data.jpa.repository.Query("SELECT w FROM Workflow w LEFT JOIN FETCH w.tasks WHERE w.id = :id")
     java.util.Optional<Workflow> findByIdWithTasks(@org.springframework.data.repository.query.Param("id") Long id);

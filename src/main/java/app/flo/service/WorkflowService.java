@@ -38,6 +38,10 @@ public class WorkflowService {
             throw new RuntimeException("Failed to create case instance for workflow");
         }
         
+        // Update workflow with case instance ID
+        workflow.setCaseInstanceId(caseInstanceId);
+        workflow = workflowRepository.save(workflow);
+        
         return workflow;
     }
 
@@ -51,13 +55,39 @@ public class WorkflowService {
         if (request.getScheduledTime() != null && !request.getScheduledTime().isEmpty()) {
             workflow.setScheduledTime(java.time.LocalDateTime.parse(request.getScheduledTime()));
         }
-        workflow.setFrequencyPattern(request.getFrequencyPattern());
+        
+        workflow.setFrequency(request.getFrequency());
+        if (request.getExecutionTime() != null && !request.getExecutionTime().isEmpty()) {
+            workflow.setExecutionTime(java.time.LocalTime.parse(request.getExecutionTime()));
+        }
+        workflow.setNthWorkingDay(request.getNthWorkingDay());
+        
+        if (request.getDrawflowData() != null) {
+            try {
+                workflow.setDrawflowData(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request.getDrawflowData()));
+            } catch (Exception e) {
+                System.err.println("Failed to serialize drawflow data: " + e.getMessage());
+            }
+        }
+        
         workflow = workflowRepository.save(workflow);
         System.out.println("Workflow saved with ID: " + workflow.getId());
+        
+        // Generate CMMN file
+        try {
+            String cmmnFileName = cmmnGeneratorService.generateCmmnFile(request);
+            System.out.println("CMMN file generated: " + cmmnFileName);
+        } catch (Exception e) {
+            System.err.println("Failed to generate CMMN file: " + e.getMessage());
+        }
         
         // Create case instance
         String caseInstanceId = cmmnService.createCaseInstance(workflow.getId());
         System.out.println("Case instance created: " + caseInstanceId);
+        
+        // Update workflow with case instance ID
+        workflow.setCaseInstanceId(caseInstanceId);
+        workflow = workflowRepository.save(workflow);
         
         // Create tasks
         if (request.getTasks() != null) {
@@ -109,7 +139,7 @@ public class WorkflowService {
     }
     
     public Workflow getWorkflowByCaseId(String caseInstanceId) {
-        Workflow workflow = workflowRepository.findByCmmnCaseId(caseInstanceId);
+        Workflow workflow = workflowRepository.findByCaseInstanceId(caseInstanceId);
         if (workflow != null && workflow.getTasks() != null) {
             // Null-safe initialization of tasks and files
             workflow.getTasks().forEach(task -> {

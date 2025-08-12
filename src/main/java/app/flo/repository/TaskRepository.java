@@ -7,7 +7,9 @@ import java.util.List;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
+
     List<Task> findByWorkflowId(Long workflowId);
+
     Task findByCmmnTaskId(String cmmnTaskId);
     
     @org.springframework.data.jpa.repository.Query("SELECT t FROM Task t LEFT JOIN FETCH t.businessFiles WHERE t.workflow.id = :workflowId")

@@ -14,6 +14,9 @@ public class WorkflowController {
     @Autowired
     private WorkflowService workflowService;
     
+    @Autowired
+    private app.flo.service.CmmnService cmmnService;
+    
     @PostMapping
     public ResponseEntity<Workflow> createWorkflow(@RequestParam String name) {
         Workflow workflow = workflowService.createWorkflow(name);
@@ -39,6 +42,16 @@ public class WorkflowController {
     public ResponseEntity<java.util.Map<String, String>> startWorkflow(@PathVariable Long id) {
         String caseInstanceId = workflowService.startWorkflow(id);
         return ResponseEntity.ok(java.util.Map.of("caseInstanceId", caseInstanceId));
+    }
+    
+    @PostMapping("/{id}/trigger")
+    public ResponseEntity<java.util.Map<String, String>> triggerWorkflow(@PathVariable Long id) {
+        try {
+            String caseInstanceId = cmmnService.triggerWorkflow(id);
+            return ResponseEntity.ok(java.util.Map.of("caseInstanceId", caseInstanceId, "status", "triggered"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        }
     }
     
     @GetMapping

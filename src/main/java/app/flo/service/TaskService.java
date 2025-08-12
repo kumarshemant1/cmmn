@@ -92,7 +92,7 @@ public class TaskService {
     }
     
     public java.util.List<Task> getTasksByCaseId(String caseInstanceId) {
-        app.flo.entity.Workflow workflow = workflowRepository.findByCmmnCaseId(caseInstanceId);
+        app.flo.entity.Workflow workflow = workflowRepository.findByCaseInstanceId(caseInstanceId);
         if (workflow != null) {
             return taskRepository.findByWorkflowIdWithFiles(workflow.getId());
         }

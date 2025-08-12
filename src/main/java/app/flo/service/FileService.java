@@ -60,7 +60,7 @@ public class FileService {
     
     public java.util.List<BusinessFile> getFilesByCaseId(String caseInstanceId) {
         // Get workflow by case ID, then get all files from all tasks
-        app.flo.entity.Workflow workflow = workflowRepository.findByCmmnCaseId(caseInstanceId);
+        app.flo.entity.Workflow workflow = workflowRepository.findByCaseInstanceId(caseInstanceId);
         if (workflow != null) {
             return workflow.getTasks().stream()
                 .flatMap(task -> businessFileRepository.findByTaskId(task.getId()).stream())

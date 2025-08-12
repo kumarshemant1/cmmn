@@ -1,12 +1,15 @@
 package app.flo.dto;
 
+import app.flo.enums.Frequency;
 import java.util.List;
 import java.util.Map;
 
 public class WorkflowDefinitionRequest {
     private String name;
     private String scheduledTime;
-    private String frequencyPattern;
+    private Frequency frequency;
+    private String executionTime;
+    private Integer nthWorkingDay;
     private Map<String, Object> drawflowData;
     private List<TaskDefinition> tasks;
     
@@ -39,8 +42,14 @@ public class WorkflowDefinitionRequest {
     public String getScheduledTime() { return scheduledTime; }
     public void setScheduledTime(String scheduledTime) { this.scheduledTime = scheduledTime; }
     
-    public String getFrequencyPattern() { return frequencyPattern; }
-    public void setFrequencyPattern(String frequencyPattern) { this.frequencyPattern = frequencyPattern; }
+    public Frequency getFrequency() { return frequency; }
+    public void setFrequency(Frequency frequency) { this.frequency = frequency; }
+    
+    public String getExecutionTime() { return executionTime; }
+    public void setExecutionTime(String executionTime) { this.executionTime = executionTime; }
+    
+    public Integer getNthWorkingDay() { return nthWorkingDay; }
+    public void setNthWorkingDay(Integer nthWorkingDay) { this.nthWorkingDay = nthWorkingDay; }
     
     public Map<String, Object> getDrawflowData() { return drawflowData; }
     public void setDrawflowData(Map<String, Object> drawflowData) { this.drawflowData = drawflowData; }
