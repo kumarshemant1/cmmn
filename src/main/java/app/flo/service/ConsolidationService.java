@@ -1,7 +1,7 @@
 package app.flo.service;
 
 import app.flo.entity.BusinessFile;
-import app.flo.entity.Task;
+import app.flo.entity.TaskMetadata;
 import app.flo.enums.TaskType;
 import app.flo.repository.BusinessFileRepository;
 import app.flo.repository.TaskRepository;
@@ -24,8 +24,8 @@ public class ConsolidationService {
     
     private final String consolidatedDir = "uploads/consolidated/";
     
-    public BusinessFile consolidateFiles(Long workflowId) throws IOException {
-        List<Task> uploadTasks = taskRepository.findByWorkflowIdWithFiles(workflowId)
+    public BusinessFile consolidateFiles(Long workflowInstanceId) throws IOException {
+        List<TaskMetadata> uploadTasks = taskRepository.findByWorkflowInstanceIdWithFiles(workflowInstanceId)
             .stream()
             .filter(task -> task.getTaskType() == TaskType.UPLOAD)
             .toList();
@@ -35,13 +35,13 @@ public class ConsolidationService {
             Files.createDirectories(consolidatedPath);
         }
         
-        String consolidatedFileName = "consolidated_workflow_" + workflowId + ".txt";
+        String consolidatedFileName = "consolidated_instance_" + workflowInstanceId + ".txt";
         Path consolidatedFile = consolidatedPath.resolve(consolidatedFileName);
         
         StringBuilder content = new StringBuilder();
-        content.append("=== CONSOLIDATED REPORT FOR WORKFLOW ").append(workflowId).append(" ===\n\n");
+        content.append("=== CONSOLIDATED REPORT FOR WORKFLOW INSTANCE ").append(workflowInstanceId).append(" ===\n\n");
         
-        for (Task task : uploadTasks) {
+        for (TaskMetadata task : uploadTasks) {
             content.append("--- Task: ").append(task.getName());
             if (task.getAssignee() != null) {
                 content.append(" (Assignee: ").append(task.getAssignee()).append(")");

@@ -1,8 +1,8 @@
 package app.flo.service;
 
 import app.flo.entity.Workflow;
-import app.flo.entity.Task;
-import app.flo.enums.TaskStatus;
+import app.flo.entity.TaskMetadata;
+import app.flo.entity.WorkflowInstance;
 import app.flo.repository.WorkflowRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,83 +22,48 @@ public class WorkflowSchedulerService {
     @Autowired
     private TaskService taskService;
     
+    @Autowired
+    private WorkflowService workflowService;
+    
     @Scheduled(fixedRate = 60000) // Check every minute
     public void checkAndTriggerWorkflows() {
         LocalDateTime now = LocalDateTime.now();
         List<Workflow> scheduledWorkflows = workflowRepository.findScheduledWorkflows(now);
         
         for (Workflow workflow : scheduledWorkflows) {
-            triggerWorkflowExecution(workflow);
+            try {
+                triggerWorkflowExecution(workflow);
+            } catch (Exception e) {
+                System.err.println("Failed to trigger scheduled workflow " + workflow.getId() + ": " + e.getMessage());
+            }
         }
     }
     
-    public void triggerWorkflowExecution(Workflow workflow) {
+    public WorkflowInstance triggerWorkflowExecution(Workflow workflow) {
         try {
-            // Start new case instance
-            String caseInstanceId = cmmnService.triggerWorkflow(workflow.getId());
-            
-            // Initialize first task
-            initializeFirstTask(workflow);
+            // Create workflow instance (this will create case instance)
+            WorkflowInstance instance = workflowService.startWorkflow(workflow.getId());
             
             System.out.println("Triggered workflow: " + workflow.getName() + 
-                             " with case instance: " + caseInstanceId);
+                             " with case instance: " + instance.getCaseInstanceId());
+            return instance;
         } catch (Exception e) {
             System.err.println("Failed to trigger workflow " + workflow.getId() + ": " + e.getMessage());
+            throw new RuntimeException("Failed to trigger workflow: " + e.getMessage(), e);
         }
     }
     
-    private void initializeFirstTask(Workflow workflow) {
-        List<Task> tasks = workflow.getTasks();
-        if (tasks != null && !tasks.isEmpty()) {
-            Task firstTask = tasks.get(0);
-            firstTask.setStatus(TaskStatus.ACTIVE);
-            taskService.updateTaskStatus(firstTask.getId(), TaskStatus.ACTIVE);
-        }
-    }
+
     
     public void completeTaskAndMoveNext(Long taskId) {
-        Task currentTask = taskService.getTaskById(taskId);
+        TaskMetadata currentTask = taskService.getTaskById(taskId);
         if (currentTask == null) return;
         
-        // Complete current task
-        taskService.updateTaskStatus(taskId, TaskStatus.COMPLETED);
+        // Complete current task in Flowable
+        taskService.completeTask(taskId);
         
-        // Check if task is part of a group
-        if (currentTask.getTaskGroup() != null) {
-            // Check if all tasks in group are completed
-            if (isTaskGroupCompleted(currentTask.getTaskGroup())) {
-                moveToNextTaskGroup(currentTask.getWorkflow());
-            }
-        } else {
-            // Single task - move to next immediately
-            moveToNextSingleTask(currentTask);
-        }
+        System.out.println("Completed task: " + currentTask.getName());
     }
     
-    private boolean isTaskGroupCompleted(String taskGroup) {
-        List<Task> groupTasks = taskService.getTasksByGroup(taskGroup);
-        return groupTasks.stream().allMatch(task -> task.getStatus() == TaskStatus.COMPLETED);
-    }
-    
-    private void moveToNextTaskGroup(Workflow workflow) {
-        List<Task> tasks = workflow.getTasks();
-        // Find next ungrouped task or different group and activate
-        tasks.stream()
-            .filter(t -> t.getStatus() != TaskStatus.COMPLETED && t.getStatus() != TaskStatus.ACTIVE)
-            .findFirst()
-            .ifPresent(nextTask -> taskService.updateTaskStatus(nextTask.getId(), TaskStatus.ACTIVE));
-    }
-    
-    private void moveToNextSingleTask(Task currentTask) {
-        Workflow workflow = currentTask.getWorkflow();
-        List<Task> tasks = workflow.getTasks();
-        
-        for (int i = 0; i < tasks.size(); i++) {
-            if (tasks.get(i).getId().equals(currentTask.getId()) && i + 1 < tasks.size()) {
-                Task nextTask = tasks.get(i + 1);
-                taskService.updateTaskStatus(nextTask.getId(), TaskStatus.ACTIVE);
-                break;
-            }
-        }
-    }
+
 }

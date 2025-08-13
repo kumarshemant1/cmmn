@@ -41,11 +41,6 @@ public class CmmnService {
                 throw new RuntimeException("Workflow not found with ID: " + workflowId);
             }
             
-            // Check if case instance already exists
-            if (workflow.getCaseInstanceId() != null) {
-                return workflow.getCaseInstanceId();
-            }
-            
             // Get or deploy case definition
             String caseDefinitionKey = getCaseDefinitionKey(workflow.getName());
             
@@ -57,9 +52,6 @@ public class CmmnService {
                 .start();
             
             String caseInstanceId = caseInstance.getId();
-            workflow.setCaseInstanceId(caseInstanceId);
-            workflowRepository.save(workflow);
-            
             return caseInstanceId;
         } catch (Exception e) {
             throw new RuntimeException("Failed to create case instance: " + e.getMessage(), e);

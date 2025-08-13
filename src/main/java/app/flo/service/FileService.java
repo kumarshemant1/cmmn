@@ -1,7 +1,7 @@
 package app.flo.service;
 
 import app.flo.entity.BusinessFile;
-import app.flo.entity.Task;
+import app.flo.entity.TaskMetadata;
 import app.flo.repository.BusinessFileRepository;
 import app.flo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,7 @@ public class FileService {
     public BusinessFile uploadFile(Long taskId, MultipartFile file, Boolean retainFile, Boolean keepVersion, Boolean keepHistory) throws IOException {
         System.out.println("FileService.uploadFile called - TaskId: " + taskId);
         
-        Task task = taskRepository.findById(taskId).orElse(null);
+        TaskMetadata task = taskRepository.findById(taskId).orElse(null);
         if (task == null) {
             System.err.println("Task not found with ID: " + taskId);
             return null;
@@ -81,13 +81,10 @@ public class FileService {
     }
     
     public java.util.List<BusinessFile> getFilesByCaseId(String caseInstanceId) {
-        // Get workflow by case ID, then get all files from all tasks
-        app.flo.entity.Workflow workflow = workflowRepository.findByCaseInstanceId(caseInstanceId);
-        if (workflow != null) {
-            return workflow.getTasks().stream()
-                .flatMap(task -> businessFileRepository.findByTaskId(task.getId()).stream())
-                .collect(java.util.stream.Collectors.toList());
-        }
-        return java.util.Collections.emptyList();
+        // Get files by case instance ID directly
+        List<TaskMetadata> tasks = taskRepository.findByCaseInstanceId(caseInstanceId);
+        return tasks.stream()
+            .flatMap(task -> businessFileRepository.findByTaskId(task.getId()).stream())
+            .collect(java.util.stream.Collectors.toList());
     }
 }

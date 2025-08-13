@@ -22,14 +22,14 @@ public class CaseController {
     private FileService fileService;
     
     @GetMapping("/{caseInstanceId}/workflow")
-    public ResponseEntity<app.flo.entity.Workflow> getWorkflowByCase(@PathVariable String caseInstanceId) {
-        app.flo.entity.Workflow workflow = workflowService.getWorkflowByCaseId(caseInstanceId);
-        return workflow != null ? ResponseEntity.ok(workflow) : ResponseEntity.notFound().build();
+    public ResponseEntity<app.flo.entity.WorkflowInstance> getWorkflowInstanceByCase(@PathVariable String caseInstanceId) {
+        app.flo.entity.WorkflowInstance instance = workflowService.getWorkflowInstanceByCaseId(caseInstanceId);
+        return instance != null ? ResponseEntity.ok(instance) : ResponseEntity.notFound().build();
     }
     
     @GetMapping("/{caseInstanceId}/tasks")
-    public ResponseEntity<java.util.List<app.flo.entity.Task>> getTasksByCase(@PathVariable String caseInstanceId) {
-        java.util.List<app.flo.entity.Task> tasks = taskService.getTasksByCaseId(caseInstanceId);
+    public ResponseEntity<java.util.List<app.flo.entity.TaskMetadata>> getTasksByCase(@PathVariable String caseInstanceId) {
+        java.util.List<app.flo.entity.TaskMetadata> tasks = taskService.getTasksByCaseId(caseInstanceId);
         return ResponseEntity.ok(tasks);
     }
     

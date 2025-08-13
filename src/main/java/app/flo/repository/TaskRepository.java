@@ -1,24 +1,30 @@
 package app.flo.repository;
 
-import app.flo.entity.Task;
+import app.flo.entity.TaskMetadata;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TaskRepository extends JpaRepository<Task, Long> {
+public interface TaskRepository extends JpaRepository<TaskMetadata, Long> {
 
-    List<Task> findByWorkflowId(Long workflowId);
+    List<TaskMetadata> findByWorkflowInstanceId(Long workflowInstanceId);
     
-    @org.springframework.data.jpa.repository.Query("SELECT t FROM Task t LEFT JOIN FETCH t.businessFiles WHERE t.workflow.id = :workflowId")
-    List<Task> findByWorkflowIdWithFiles(@org.springframework.data.repository.query.Param("workflowId") Long workflowId);
+    @org.springframework.data.jpa.repository.Query("SELECT t FROM TaskMetadata t LEFT JOIN FETCH t.businessFiles WHERE t.workflowInstance.id = :workflowInstanceId")
+    List<TaskMetadata> findByWorkflowInstanceIdWithFiles(@org.springframework.data.repository.query.Param("workflowInstanceId") Long workflowInstanceId);
     
-    @org.springframework.data.jpa.repository.Query("SELECT t FROM Task t LEFT JOIN FETCH t.businessFiles WHERE t.id = :id")
-    java.util.Optional<Task> findByIdWithFiles(@org.springframework.data.repository.query.Param("id") Long id);
+    @org.springframework.data.jpa.repository.Query("SELECT t FROM TaskMetadata t LEFT JOIN FETCH t.businessFiles WHERE t.id = :id")
+    java.util.Optional<TaskMetadata> findByIdWithFiles(@org.springframework.data.repository.query.Param("id") Long id);
     
-    List<Task> findByAssignee(String assignee);
+    List<TaskMetadata> findByAssignee(String assignee);
     
-    List<Task> findByWorkflowIdAndTaskType(Long workflowId, app.flo.enums.TaskType taskType);
+    List<TaskMetadata> findByWorkflowInstanceIdAndTaskType(Long workflowInstanceId, app.flo.enums.TaskType taskType);
     
-    List<Task> findByTaskGroup(String taskGroup);
+    List<TaskMetadata> findByTaskGroup(String taskGroup);
+    
+    List<TaskMetadata> findByName(String name);
+    
+    TaskMetadata findByTaskId(String taskId);
+    
+    List<TaskMetadata> findByCaseInstanceId(String caseInstanceId);
 }

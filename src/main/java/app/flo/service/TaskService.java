@@ -1,9 +1,9 @@
 package app.flo.service;
 
-import app.flo.entity.Task;
-import app.flo.enums.TaskStatus;
+import app.flo.entity.TaskMetadata;
 import app.flo.enums.TaskType;
 import app.flo.repository.TaskRepository;
+import app.flo.repository.WorkflowInstanceRepository;
 import org.flowable.cmmn.api.CmmnTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,88 +18,54 @@ public class TaskService {
     @Autowired
     private CmmnTaskService cmmnTaskService;
     
-    public Task createTask(String name, Long workflowId) {
-        Task task = new Task();
+    public TaskMetadata createTask(String name, Long workflowInstanceId) {
+        TaskMetadata task = new TaskMetadata();
         task.setName(name);
         return taskRepository.save(task);
     }
     
-    public Task createTaskFromDefinition(app.flo.dto.WorkflowDefinitionRequest.TaskDefinition taskDef, Long workflowId) {
-        try {
-            Task task = new Task();
-            task.setName(taskDef.getName());
-            
-            // Safely parse task type
-            if (taskDef.getTaskType() != null) {
-                task.setTaskType(TaskType.valueOf(taskDef.getTaskType().toUpperCase()));
-            }
-            
-            // Set assignee and taskGroup if provided
-            if (taskDef.getAssignee() != null) {
-                task.setAssignee(taskDef.getAssignee());
-            }
-            if (taskDef.getTaskGroup() != null) {
-                task.setTaskGroup(taskDef.getTaskGroup());
-            }
-            
-            // Get actual workflow from repository
-            app.flo.entity.Workflow workflow = workflowRepository.findById(workflowId).orElse(null);
-            if (workflow != null) {
-                task.setWorkflow(workflow);
-                
-                // Create Flowable task if case instance exists
-                if (workflow.getCaseInstanceId() != null) {
-                    try {
-                        // Query existing Flowable tasks for this case
-                        List<org.flowable.task.api.Task> flowableTasks = cmmnTaskService.createTaskQuery()
-                            .caseInstanceId(workflow.getCaseInstanceId())
-                            .taskName(taskDef.getName())
-                            .list();
-                        
-                        if (!flowableTasks.isEmpty()) {
-                            // Use existing Flowable task ID
-                            task.setTaskId(flowableTasks.get(0).getId());
-                        } else {
-                            // Fallback to manual ID if Flowable task not found
-                            task.setTaskId("task_" + taskDef.getId() + "_" + workflowId);
-                        }
-                    } catch (Exception e) {
-                        // Fallback to manual ID if Flowable query fails
-                        task.setTaskId("task_" + taskDef.getId() + "_" + workflowId);
-                        System.err.println("Failed to query Flowable tasks, using fallback ID: " + e.getMessage());
-                    }
-                } else {
-                    // No case instance yet, use manual ID
-                    task.setTaskId("task_" + taskDef.getId() + "_" + workflowId);
-                }
-            }
-            
-            return taskRepository.save(task);
-        } catch (Exception e) {
-            System.err.println("Failed to create task: " + e.getMessage());
-            throw e;
+    // This method is deprecated - use FlowableTaskService.createTaskMetadata instead
+    @Deprecated
+    public TaskMetadata createTaskFromDefinition(app.flo.dto.WorkflowDefinitionRequest.TaskDefinition taskDef, Long workflowId) {
+        // Template creation only - no Flowable integration at template level
+        TaskMetadata task = new TaskMetadata();
+        task.setName(taskDef.getName());
+        
+        if (taskDef.getTaskType() != null) {
+            task.setTaskType(TaskType.valueOf(taskDef.getTaskType().toUpperCase()));
         }
+        if (taskDef.getAssignee() != null) {
+            task.setAssignee(taskDef.getAssignee());
+        }
+        if (taskDef.getTaskGroup() != null) {
+            task.setTaskGroup(taskDef.getTaskGroup());
+        }
+        
+        return taskRepository.save(task);
     }
     
-    public List<Task> getTasksByWorkflow(Long workflowId) {
-        return taskRepository.findByWorkflowIdWithFiles(workflowId);
+    public List<TaskMetadata> getTasksByWorkflowInstance(Long workflowInstanceId) {
+        return taskRepository.findByWorkflowInstanceIdWithFiles(workflowInstanceId);
     }
     
-    public Task completeTask(Long taskId) {
-        Task task = taskRepository.findById(taskId).orElse(null);
-        if (task != null) {
-            task.setStatus(TaskStatus.COMPLETED);
-            if (task.getTaskId() != null) {
-                cmmnTaskService.complete(task.getTaskId());
-            }
+    public TaskMetadata completeTask(Long taskId) {
+        TaskMetadata task = taskRepository.findById(taskId).orElse(null);
+        if (task != null && task.getTaskId() != null) {
+            // Complete task in Flowable engine
+            cmmnTaskService.complete(task.getTaskId());
+            
+            // Update completion timestamp
+            task.setCompletedAt(java.time.LocalDateTime.now());
             return taskRepository.save(task);
         }
         return null;
     }
     
-    public Task getTaskById(Long id) {
+    public TaskMetadata getTaskById(Long id) {
         return taskRepository.findByIdWithFiles(id).orElse(null);
     }
+    
+
     
     @Autowired
     private FileService fileService;
@@ -122,37 +88,58 @@ public class TaskService {
     @Autowired
     private app.flo.repository.WorkflowRepository workflowRepository;
     
+    @Autowired
+    private WorkflowInstanceRepository workflowInstanceRepository;
+    
     public app.flo.entity.BusinessFile consolidateWorkflowFiles(Long taskId) throws java.io.IOException {
-        Task task = getTaskById(taskId);
-        if (task != null && task.getWorkflow() != null) {
-            return consolidationService.consolidateFiles(task.getWorkflow().getId());
+        TaskMetadata task = getTaskById(taskId);
+        if (task != null && task.getWorkflowInstance() != null) {
+            return consolidationService.consolidateFiles(task.getWorkflowInstance().getId());
         }
         return null;
     }
     
-    public java.util.List<Task> getTasksByCaseId(String caseInstanceId) {
-        app.flo.entity.Workflow workflow = workflowRepository.findByCaseInstanceId(caseInstanceId);
-        if (workflow != null) {
-            return taskRepository.findByWorkflowIdWithFiles(workflow.getId());
-        }
-        return java.util.Collections.emptyList();
+    public java.util.List<TaskMetadata> getTasksByCaseId(String caseInstanceId) {
+        return taskRepository.findByCaseInstanceId(caseInstanceId);
     }
     
-    public Task updateTaskStatus(Long taskId, TaskStatus status) {
-        Task task = taskRepository.findById(taskId).orElse(null);
-        if (task != null) {
-            task.setStatus(status);
-            return taskRepository.save(task);
+    public String getTaskStatus(Long taskId) {
+        TaskMetadata task = taskRepository.findById(taskId).orElse(null);
+        if (task != null && task.getTaskId() != null) {
+            try {
+                org.flowable.task.api.Task flowableTask = cmmnTaskService.createTaskQuery()
+                    .taskId(task.getTaskId())
+                    .singleResult();
+                
+                if (flowableTask != null) {
+                    return "ACTIVE";
+                } else {
+                    return task.getCompletedAt() != null ? "COMPLETED" : "TERMINATED";
+                }
+            } catch (Exception e) {
+                return "UNKNOWN";
+            }
         }
-        return null;
+        return "NOT_STARTED";
     }
     
-    public List<Task> getTasksByGroup(String taskGroup) {
+    public boolean isTaskCompleted(Long taskId) {
+        TaskMetadata task = taskRepository.findById(taskId).orElse(null);
+        if (task != null && task.getTaskId() != null) {
+            org.flowable.task.api.Task flowableTask = cmmnTaskService.createTaskQuery()
+                .taskId(task.getTaskId())
+                .singleResult();
+            return flowableTask == null;
+        }
+        return false;
+    }
+    
+    public List<TaskMetadata> getTasksByGroup(String taskGroup) {
         return taskRepository.findByTaskGroup(taskGroup);
     }
     
-    public Task assignTask(Long taskId, String assignee) {
-        Task task = taskRepository.findById(taskId).orElse(null);
+    public TaskMetadata assignTask(Long taskId, String assignee) {
+        TaskMetadata task = taskRepository.findById(taskId).orElse(null);
         if (task != null) {
             task.setAssignee(assignee);
             return taskRepository.save(task);
@@ -164,33 +151,56 @@ public class TaskService {
         return workflowRepository.findById(workflowId).orElse(null);
     }
     
-    public void syncTasksWithFlowable(Long workflowId) {
-        app.flo.entity.Workflow workflow = workflowRepository.findById(workflowId).orElse(null);
-        if (workflow != null && workflow.getCaseInstanceId() != null) {
+    public void syncTasksWithFlowable(String caseInstanceId) {
+        if (caseInstanceId != null) {
             try {
                 // Get Flowable tasks for this case instance
                 List<org.flowable.task.api.Task> flowableTasks = cmmnTaskService.createTaskQuery()
-                    .caseInstanceId(workflow.getCaseInstanceId())
+                    .caseInstanceId(caseInstanceId)
                     .list();
                 
-                // Update our tasks with Flowable task IDs
-                List<Task> ourTasks = taskRepository.findByWorkflowId(workflowId);
-                for (Task ourTask : ourTasks) {
-                    for (org.flowable.task.api.Task flowableTask : flowableTasks) {
-                        if (ourTask.getName().equals(flowableTask.getName())) {
-                            ourTask.setTaskId(flowableTask.getId());
-                            if (flowableTask.getAssignee() != null) {
-                                ourTask.setAssignee(flowableTask.getAssignee());
-                            }
-                            taskRepository.save(ourTask);
-                            break;
+                System.out.println("Found " + flowableTasks.size() + " active Flowable tasks for case: " + caseInstanceId);
+                
+                // Get workflow instance
+                app.flo.entity.WorkflowInstance workflowInstance = workflowInstanceRepository.findByCaseInstanceId(caseInstanceId);
+                if (workflowInstance == null) {
+                    System.err.println("WorkflowInstance not found for case: " + caseInstanceId);
+                    return;
+                }
+                
+                // Create TaskMetadata for each Flowable task
+                for (org.flowable.task.api.Task flowableTask : flowableTasks) {
+                    // Check if TaskMetadata already exists
+                    TaskMetadata existingTask = taskRepository.findByTaskId(flowableTask.getId());
+                    if (existingTask == null) {
+                        // Create new TaskMetadata
+                        TaskMetadata newTask = new TaskMetadata();
+                        newTask.setTaskId(flowableTask.getId());
+                        newTask.setName(flowableTask.getName());
+                        newTask.setCaseInstanceId(caseInstanceId);
+                        newTask.setWorkflowInstance(workflowInstance);
+                        newTask.setTaskType(TaskType.UPLOAD); // Default type
+                        if (flowableTask.getAssignee() != null) {
+                            newTask.setAssignee(flowableTask.getAssignee());
                         }
+                        taskRepository.save(newTask);
+                        System.out.println("Created TaskMetadata: " + newTask.getName() + " with Flowable ID: " + flowableTask.getId());
                     }
                 }
-                System.out.println("Synced " + ourTasks.size() + " tasks with Flowable engine");
             } catch (Exception e) {
                 System.err.println("Failed to sync tasks with Flowable: " + e.getMessage());
+                e.printStackTrace();
             }
         }
+    }
+    
+    public List<org.flowable.task.api.Task> getActiveFlowableTasks(String caseInstanceId) {
+        return cmmnTaskService.createTaskQuery()
+            .caseInstanceId(caseInstanceId)
+            .list();
+    }
+    
+    public TaskMetadata getTaskMetadataByFlowableTaskId(String flowableTaskId) {
+        return taskRepository.findByTaskId(flowableTaskId);
     }
 }

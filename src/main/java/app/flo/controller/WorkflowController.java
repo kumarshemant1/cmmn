@@ -1,6 +1,7 @@
 package app.flo.controller;
 
 import app.flo.entity.Workflow;
+import app.flo.entity.WorkflowInstance;
 import app.flo.service.WorkflowService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -42,9 +43,13 @@ public class WorkflowController {
     }
     
     @PostMapping("/{id}/start")
-    public ResponseEntity<java.util.Map<String, String>> startWorkflow(@PathVariable Long id) {
-        String caseInstanceId = workflowService.startWorkflow(id);
-        return ResponseEntity.ok(java.util.Map.of("caseInstanceId", caseInstanceId));
+    public ResponseEntity<app.flo.dto.WorkflowInstanceDTO> startWorkflow(@PathVariable Long id) {
+        try {
+            WorkflowInstance instance = workflowService.startWorkflow(id);
+            return ResponseEntity.ok(new app.flo.dto.WorkflowInstanceDTO(instance));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
     
     @PostMapping("/{id}/trigger")
@@ -55,8 +60,13 @@ public class WorkflowController {
                 return ResponseEntity.badRequest().body(java.util.Map.of("error", "Workflow not found"));
             }
             
-            schedulerService.triggerWorkflowExecution(workflow);
-            return ResponseEntity.ok(java.util.Map.of("workflowId", id.toString(), "status", "triggered"));
+            WorkflowInstance instance = schedulerService.triggerWorkflowExecution(workflow);
+            return ResponseEntity.ok(java.util.Map.of(
+                "workflowId", id.toString(), 
+                "status", "triggered",
+                "caseInstanceId", instance.getCaseInstanceId(),
+                "workflowInstanceId", instance.getId().toString()
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
         }
@@ -94,8 +104,17 @@ public class WorkflowController {
     }
     
     @GetMapping("/case/{caseInstanceId}")
-    public ResponseEntity<Workflow> getWorkflowByCaseId(@PathVariable String caseInstanceId) {
-        Workflow workflow = workflowService.getWorkflowByCaseId(caseInstanceId);
-        return workflow != null ? ResponseEntity.ok(workflow) : ResponseEntity.notFound().build();
+    public ResponseEntity<app.flo.dto.WorkflowInstanceDTO> getWorkflowInstanceByCaseId(@PathVariable String caseInstanceId) {
+        WorkflowInstance instance = workflowService.getWorkflowInstanceByCaseId(caseInstanceId);
+        return instance != null ? ResponseEntity.ok(new app.flo.dto.WorkflowInstanceDTO(instance)) : ResponseEntity.notFound().build();
+    }
+    
+    @GetMapping("/{id}/instances")
+    public ResponseEntity<List<app.flo.dto.WorkflowInstanceDTO>> getWorkflowInstances(@PathVariable Long id) {
+        List<WorkflowInstance> instances = workflowService.getWorkflowInstances(id);
+        List<app.flo.dto.WorkflowInstanceDTO> instanceDTOs = instances.stream()
+            .map(app.flo.dto.WorkflowInstanceDTO::new)
+            .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(instanceDTOs);
     }
 }

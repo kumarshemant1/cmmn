@@ -1,7 +1,9 @@
 package app.flo.service;
 
 import app.flo.entity.Workflow;
+import app.flo.entity.WorkflowInstance;
 import app.flo.repository.WorkflowRepository;
+import app.flo.repository.WorkflowInstanceRepository;
 import jakarta.transaction.Transactional;
 import org.flowable.cmmn.api.CmmnRuntimeService;
 import org.flowable.cmmn.api.runtime.CaseInstance;
@@ -14,6 +16,9 @@ public class WorkflowService {
     
     @Autowired
     private WorkflowRepository workflowRepository;
+    
+    @Autowired
+    private WorkflowInstanceRepository workflowInstanceRepository;
     
     @Autowired
     private CmmnRuntimeService cmmnRuntimeService;
@@ -30,19 +35,7 @@ public class WorkflowService {
     public Workflow createWorkflow(String name) {
         Workflow workflow = new Workflow();
         workflow.setName(name);
-        workflow = workflowRepository.save(workflow);
-        
-        // Ensure every workflow has a case instance ID
-        String caseInstanceId = cmmnService.createCaseInstance(workflow.getId());
-        if (caseInstanceId == null) {
-            throw new RuntimeException("Failed to create case instance for workflow");
-        }
-        
-        // Update workflow with case instance ID
-        workflow.setCaseInstanceId(caseInstanceId);
-        workflow = workflowRepository.save(workflow);
-        
-        return workflow;
+        return workflowRepository.save(workflow);
     }
 
     public Workflow createWorkflowFromDefinition(app.flo.dto.WorkflowDefinitionRequest request) {
@@ -71,7 +64,7 @@ public class WorkflowService {
         }
         
         workflow = workflowRepository.save(workflow);
-        System.out.println("Workflow saved with ID: " + workflow.getId());
+        System.out.println("Workflow template saved with ID: " + workflow.getId());
         
         // Generate and persist CMMN content to disk
         try {
@@ -81,77 +74,57 @@ public class WorkflowService {
             System.err.println("Failed to generate CMMN content: " + e.getMessage());
         }
         
-        // Create case instance
-        String caseInstanceId = cmmnService.createCaseInstance(workflow.getId());
-        System.out.println("Case instance created: " + caseInstanceId);
-        
-        // Update workflow with case instance ID
-        workflow.setCaseInstanceId(caseInstanceId);
-        workflow = workflowRepository.save(workflow);
-        
-        // Create tasks
-        if (request.getTasks() != null) {
-            System.out.println("Creating " + request.getTasks().size() + " tasks");
-            for (app.flo.dto.WorkflowDefinitionRequest.TaskDefinition taskDef : request.getTasks()) {
-                taskService.createTaskFromDefinition(taskDef, workflow.getId());
-            }
-            
-            // Sync tasks with Flowable engine
-            taskService.syncTasksWithFlowable(workflow.getId());
-        }
+        // Task creation happens at instance level, not template level
+        System.out.println("Workflow template created. Tasks will be created when instances are started.");
         
         return workflow;
     }
     
-    public String startWorkflow(Long workflowId) {
-        return cmmnService.createCaseInstance(workflowId);
+    public WorkflowInstance startWorkflow(Long workflowId) {
+        Workflow workflow = workflowRepository.findById(workflowId).orElse(null);
+        if (workflow == null) {
+            throw new RuntimeException("Workflow template not found");
+        }
+        
+        // Create case instance
+        String caseInstanceId = cmmnService.createCaseInstance(workflowId);
+        if (caseInstanceId == null) {
+            throw new RuntimeException("Failed to create case instance");
+        }
+        
+        // Create workflow instance
+        WorkflowInstance instance = new WorkflowInstance();
+        instance.setWorkflow(workflow);
+        instance.setCaseInstanceId(caseInstanceId);
+        instance = workflowInstanceRepository.save(instance);
+        
+        // Sync tasks with Flowable engine for this instance
+        taskService.syncTasksWithFlowable(caseInstanceId);
+        
+        return instance;
     }
     
     public List<Workflow> getAllWorkflows() {
-        List<Workflow> workflows = workflowRepository.findAllWithTasksAndFiles();
-        // Null-safe initialization of business files for all workflows
-        workflows.forEach(workflow -> {
-            if (workflow.getTasks() != null) {
-                workflow.getTasks().forEach(task -> {
-                    if (task.getBusinessFiles() != null) {
-                        task.getBusinessFiles().size();
-                    }
-                });
-            }
-        });
-        return workflows;
+        // Return all workflow templates (no tasks at template level)
+        return workflowRepository.findAll();
     }
     
     public Workflow getWorkflowById(Long id) {
-        java.util.Optional<Workflow> workflow = workflowRepository.findByIdWithTasks(id);
-        if (workflow.isPresent()) {
-            // Null-safe initialization of business files
-            if (workflow.get().getTasks() != null) {
-                workflow.get().getTasks().forEach(task -> {
-                    if (task.getBusinessFiles() != null) {
-                        task.getBusinessFiles().size();
-                    }
-                });
-            }
-        }
-        return workflow.orElse(null);
+        // Return workflow template (no tasks at template level)
+        return workflowRepository.findById(id).orElse(null);
     }
     
     public Workflow getWorkflowWithTasks(Long id) {
-        return workflowRepository.findByIdWithTasks(id).orElse(null);
+        // Deprecated - workflow templates don't have tasks
+        return workflowRepository.findById(id).orElse(null);
     }
     
-    public Workflow getWorkflowByCaseId(String caseInstanceId) {
-        Workflow workflow = workflowRepository.findByCaseInstanceId(caseInstanceId);
-        if (workflow != null && workflow.getTasks() != null) {
-            // Null-safe initialization of tasks and files
-            workflow.getTasks().forEach(task -> {
-                if ( task != null && task.getBusinessFiles() != null) {
-                    task.getBusinessFiles().size();
-                }
-            });
-        }
-        return workflow;
+    public WorkflowInstance getWorkflowInstanceByCaseId(String caseInstanceId) {
+        return workflowInstanceRepository.findByCaseInstanceId(caseInstanceId);
+    }
+    
+    public List<WorkflowInstance> getWorkflowInstances(Long workflowId) {
+        return workflowInstanceRepository.findByWorkflowId(workflowId);
     }
     
     public Workflow updateWorkflowDefinition(Long workflowId, app.flo.dto.WorkflowDefinitionRequest request) {

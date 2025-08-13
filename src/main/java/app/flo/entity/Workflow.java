@@ -17,9 +17,6 @@ public class Workflow {
     @Column(nullable = false)
     private String name;
     
-    @Column(name = "case_instance_id")
-    private String caseInstanceId;
-    
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
     
@@ -39,9 +36,7 @@ public class Workflow {
     @Column(name = "drawflow_data", columnDefinition = "TEXT")
     private String drawflowData;
     
-    @OneToMany(mappedBy = "workflow", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private List<Task> tasks;
+
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -49,14 +44,12 @@ public class Workflow {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     
-    public String getCaseInstanceId() { return caseInstanceId; }
-    public void setCaseInstanceId(String caseInstanceId) { this.caseInstanceId = caseInstanceId; }
+
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
-    public List<Task> getTasks() { return tasks; }
-    public void setTasks(List<Task> tasks) { this.tasks = tasks; }
+
     
     public LocalDateTime getScheduledTime() { return scheduledTime; }
     public void setScheduledTime(LocalDateTime scheduledTime) { this.scheduledTime = scheduledTime; }

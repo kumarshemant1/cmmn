@@ -8,6 +8,18 @@
 		{
 			"key": "baseUrl",
 			"value": "http://localhost:8080"
+		},
+		{
+			"key": "caseInstanceId",
+			"value": ""
+		},
+		{
+			"key": "flowableTaskId",
+			"value": ""
+		},
+		{
+			"key": "taskMetadataId",
+			"value": ""
 		}
 	],
 	"item": [
@@ -63,7 +75,7 @@
 					}
 				},
 				{
-					"name": "1.4 Add Dynamic Task to Workflow",
+					"name": "1.4 Add Dynamic Task to Instance",
 					"request": {
 						"method": "POST",
 						"header": [{"key": "Content-Type", "value": "application/json"}],
@@ -79,7 +91,7 @@
 					}
 				},
 				{
-					"name": "1.5 Get All Workflows",
+					"name": "1.5 Get All Workflow Templates",
 					"request": {
 						"method": "GET",
 						"url": {
@@ -103,10 +115,27 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "workflows", "1", "trigger"]
 						}
-					}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.caseInstanceId) {",
+									"        pm.collectionVariables.set('caseInstanceId', response.caseInstanceId);",
+									"        console.log('Captured caseInstanceId:', response.caseInstanceId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
-					"name": "2.2 Get Workflow with Tasks",
+					"name": "2.2 Get Workflow Template",
 					"request": {
 						"method": "GET",
 						"url": {
@@ -117,24 +146,52 @@
 					}
 				},
 				{
-					"name": "2.3 Get All Tasks of Workflow",
+					"name": "2.3 Get Tasks by Case Instance",
 					"request": {
 						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks/workflow/1",
+							"raw": "{{baseUrl}}/api/tasks/case/{{caseInstanceId}}",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks", "workflow", "1"]
+							"path": ["api", "tasks", "case", "{{caseInstanceId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const tasks = pm.response.json();",
+									"    if (tasks.length > 0) {",
+									"        pm.collectionVariables.set('flowableTaskId', tasks[0].flowableTaskId);",
+									"        console.log('Captured flowableTaskId:', tasks[0].flowableTaskId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "2.4 Get Workflow Instance by Case ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/workflows/case/{{caseInstanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "workflows", "case", "{{caseInstanceId}}"]
 						}
 					}
 				},
 				{
-					"name": "2.4 Get Workflow by Case Instance ID",
+					"name": "2.5 Get Workflow Instances",
 					"request": {
 						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/workflows/case/abc123-case-instance-id",
+							"raw": "{{baseUrl}}/api/workflows/1/instances",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "workflows", "case", "abc123-case-instance-id"]
+							"path": ["api", "workflows", "1", "instances"]
 						}
 					}
 				}
@@ -144,28 +201,46 @@
 			"name": "3. Task Operations",
 			"item": [
 				{
-					"name": "3.1 Upload File to Task",
+					"name": "3.1 Get Flowable Task by ID",
 					"request": {
-						"method": "POST",
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": []
-								}
-							]
-						},
+						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks/1/upload",
+							"raw": "{{baseUrl}}/api/tasks/{{flowableTaskId}}",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks", "1", "upload"]
+							"path": ["api", "tasks", "{{flowableTaskId}}"]
 						}
 					}
 				},
 				{
-					"name": "3.2 Upload File with Options",
+					"name": "3.2 Get TaskMetadata by Flowable ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/flowable/{{flowableTaskId}}/metadata",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "flowable", "{{flowableTaskId}}", "metadata"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const metadata = pm.response.json();",
+									"    if (metadata.id) {",
+									"        pm.collectionVariables.set('taskMetadataId', metadata.id);",
+									"        console.log('Captured taskMetadataId:', metadata.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "3.3 Upload File with Options",
 					"request": {
 						"method": "POST",
 						"body": {
@@ -194,31 +269,31 @@
 							]
 						},
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks/1/upload",
+							"raw": "{{baseUrl}}/api/tasks/{{taskMetadataId}}/upload",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks", "1", "upload"]
+							"path": ["api", "tasks", "{{taskMetadataId}}", "upload"]
 						}
 					}
 				},
 				{
-					"name": "3.3 Complete Task",
+					"name": "3.3 Complete Flowable Task",
 					"request": {
 						"method": "PUT",
 						"url": {
-							"raw": "{{baseUrl}}/api/workflows/1/tasks/1/complete",
+							"raw": "{{baseUrl}}/api/tasks/{{flowableTaskId}}/complete",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "workflows", "1", "tasks", "1", "complete"]
+							"path": ["api", "tasks", "{{flowableTaskId}}", "complete"]
 						}
 					}
 				},
 				{
-					"name": "3.4 Assign/Reassign Task",
+					"name": "3.4 Assign Flowable Task",
 					"request": {
 						"method": "PUT",
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks/1/assign?assignee=newuser",
+							"raw": "{{baseUrl}}/api/tasks/{{flowableTaskId}}/assign?assignee=newuser",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks", "1", "assign"],
+							"path": ["api", "tasks", "{{flowableTaskId}}", "assign"],
 							"query": [
 								{
 									"key": "assignee",
@@ -245,18 +320,13 @@
 					}
 				},
 				{
-					"name": "3.6 Update Task Status",
+					"name": "3.6 Get Flowable Task Status",
 					"request": {
-						"method": "PUT",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
-						},
+						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks/1/status",
+							"raw": "{{baseUrl}}/api/tasks/{{flowableTaskId}}/status",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks", "1", "status"]
+							"path": ["api", "tasks", "{{flowableTaskId}}", "status"]
 						}
 					}
 				},
@@ -272,27 +342,13 @@
 					}
 				},
 				{
-					"name": "3.8 Create Individual Task",
+					"name": "3.8 Get Active Flowable Tasks",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks?name=Manual Task&workflowId=1&taskType=UPLOAD",
+							"raw": "{{baseUrl}}/api/tasks/active",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks"],
-							"query": [
-								{
-									"key": "name",
-									"value": "Manual Task"
-								},
-								{
-									"key": "workflowId",
-									"value": "1"
-								},
-								{
-									"key": "taskType",
-									"value": "UPLOAD"
-								}
-							]
+							"path": ["api", "tasks", "active"]
 						}
 					}
 				}
@@ -302,13 +358,13 @@
 			"name": "4. Utility Operations",
 			"item": [
 				{
-					"name": "4.1 Get Task Details",
+					"name": "4.1 Check Task Completion",
 					"request": {
 						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks/1",
+							"raw": "{{baseUrl}}/api/tasks/{{flowableTaskId}}/completed",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks", "1"]
+							"path": ["api", "tasks", "{{flowableTaskId}}", "completed"]
 						}
 					}
 				},
@@ -379,18 +435,66 @@
 					}
 				},
 				{
-					"name": "4.8 Complete Task (Alternative)",
+					"name": "4.8 Upload File to Task Metadata",
 					"request": {
-						"method": "PUT",
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "retainFile",
+									"value": "true",
+									"type": "text"
+								}
+							]
+						},
 						"url": {
-							"raw": "{{baseUrl}}/api/tasks/1/complete",
+							"raw": "{{baseUrl}}/api/tasks/1/upload",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "tasks", "1", "complete"]
+							"path": ["api", "tasks", "1", "upload"]
 						}
 					}
 				},
 				{
-					"name": "4.9 Test All Endpoints Status",
+					"name": "4.9 Get Case Instance Info",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cases/case-instance-id-123/workflow",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cases", "case-instance-id-123", "workflow"]
+						}
+					}
+				},
+				{
+					"name": "4.10 Get Case Tasks",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cases/case-instance-id-123/tasks",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cases", "case-instance-id-123", "tasks"]
+						}
+					}
+				},
+				{
+					"name": "4.11 Get Case Files",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cases/case-instance-id-123/files",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cases", "case-instance-id-123", "files"]
+						}
+					}
+				},
+				{
+					"name": "4.12 Test All Endpoints Status",
 					"request": {
 						"method": "GET",
 						"url": {

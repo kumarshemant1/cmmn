@@ -36,7 +36,7 @@ public class BusinessFile {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id")
     @JsonBackReference
-    private Task task;
+    private TaskMetadata task;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -65,6 +65,6 @@ public class BusinessFile {
     public Boolean getKeepHistory() { return keepHistory; }
     public void setKeepHistory(Boolean keepHistory) { this.keepHistory = keepHistory; }
     
-    public Task getTask() { return task; }
-    public void setTask(Task task) { this.task = task; }
+    public TaskMetadata getTask() { return task; }
+    public void setTask(TaskMetadata task) { this.task = task; }
 }

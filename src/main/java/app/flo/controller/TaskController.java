@@ -1,7 +1,9 @@
 package app.flo.controller;
 
-import app.flo.entity.Task;
+import app.flo.entity.TaskMetadata;
+import app.flo.service.FlowableTaskService;
 import app.flo.service.TaskService;
+import org.flowable.task.api.Task;
 import app.flo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,47 +15,52 @@ import java.util.List;
 public class TaskController {
     
     @Autowired
+    private FlowableTaskService flowableTaskService;
+    
+    @Autowired
     private TaskService taskService;
     
     @Autowired
     private TaskRepository taskRepository;
     
-    @PostMapping
-    public ResponseEntity<Task> createTask(@RequestParam String name, @RequestParam Long workflowId, @RequestParam String taskType) {
+    @GetMapping("/case/{caseInstanceId}")
+    public ResponseEntity<java.util.List<app.flo.dto.TaskDTO>> getTasksByCaseInstance(@PathVariable String caseInstanceId) {
         try {
-            Task task = taskService.createTask(name, workflowId);
-            task.setTaskType(app.flo.enums.TaskType.valueOf(taskType.toUpperCase()));
-            
-            // Set workflow relationship
-            app.flo.entity.Workflow workflow = taskService.getWorkflowById(workflowId);
-            if (workflow != null) {
-                task.setWorkflow(workflow);
-                task = taskRepository.save(task);
-                return ResponseEntity.ok(task);
-            } else {
-                return ResponseEntity.badRequest().build();
-            }
+            java.util.List<Task> tasks = flowableTaskService.getTasksByCaseInstance(caseInstanceId);
+            java.util.List<app.flo.dto.TaskDTO> taskDTOs = tasks.stream()
+                .map(app.flo.dto.TaskDTO::new)
+                .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(taskDTOs);
         } catch (Exception e) {
-            System.err.println("Error creating task: " + e.getMessage());
+            System.err.println("Error getting tasks: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
     
-    @GetMapping("/workflow/{workflowId}")
-    public ResponseEntity<List<Task>> getTasksByWorkflow(@PathVariable Long workflowId) {
-        return ResponseEntity.ok(taskService.getTasksByWorkflow(workflowId));
+    @GetMapping("/active")
+    public ResponseEntity<java.util.List<app.flo.dto.TaskDTO>> getActiveTasks() {
+        try {
+            java.util.List<Task> tasks = flowableTaskService.getActiveTasks();
+            java.util.List<app.flo.dto.TaskDTO> taskDTOs = tasks.stream()
+                .map(app.flo.dto.TaskDTO::new)
+                .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(taskDTOs);
+        } catch (Exception e) {
+            System.err.println("Error getting active tasks: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
-    @GetMapping("/{id}")
-    public ResponseEntity<Task> getTask(@PathVariable Long id) {
+    @GetMapping("/{taskId}")
+    public ResponseEntity<app.flo.dto.TaskDTO> getTask(@PathVariable String taskId) {
         try {
-            System.out.println("Getting task with ID: " + id);
-            Task task = taskService.getTaskById(id);
+            System.out.println("Getting Flowable task with ID: " + taskId);
+            Task task = flowableTaskService.getFlowableTask(taskId);
             if (task != null) {
                 System.out.println("Found task: " + task.getName());
-                return ResponseEntity.ok(task);
+                return ResponseEntity.ok(new app.flo.dto.TaskDTO(task));
             } else {
-                System.out.println("Task not found with ID: " + id);
+                System.out.println("Task not found with ID: " + taskId);
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
@@ -62,10 +69,15 @@ public class TaskController {
         }
     }
     
-    @PutMapping("/{id}/complete")
-    public ResponseEntity<Task> completeTask(@PathVariable Long id) {
-        Task task = taskService.completeTask(id);
-        return task != null ? ResponseEntity.ok(task) : ResponseEntity.notFound().build();
+    @PutMapping("/{taskId}/complete")
+    public ResponseEntity<java.util.Map<String, String>> completeTask(@PathVariable String taskId) {
+        try {
+            flowableTaskService.completeTaskWithMetadata(taskId);
+            return ResponseEntity.ok(java.util.Map.of("taskId", taskId, "status", "completed"));
+        } catch (Exception e) {
+            System.err.println("Error completing task: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
     @PostMapping("/{id}/upload")
@@ -121,37 +133,59 @@ public class TaskController {
         }
     }
     
-    @PutMapping("/{id}/assign")
-    public ResponseEntity<Task> assignTask(@PathVariable Long id, @RequestParam String assignee) {
-        Task task = taskService.assignTask(id, assignee);
-        return task != null ? ResponseEntity.ok(task) : ResponseEntity.notFound().build();
+    @PutMapping("/{taskId}/assign")
+    public ResponseEntity<java.util.Map<String, String>> assignTask(@PathVariable String taskId, @RequestParam String assignee) {
+        try {
+            flowableTaskService.assignTask(taskId, assignee);
+            return ResponseEntity.ok(java.util.Map.of("taskId", taskId, "assignee", assignee));
+        } catch (Exception e) {
+            System.err.println("Error assigning task: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
     @GetMapping("/assignee/{assignee}")
-    public ResponseEntity<List<Task>> getTasksByAssignee(@PathVariable String assignee) {
-        List<Task> tasks = taskRepository.findByAssignee(assignee);
-        return ResponseEntity.ok(tasks);
+    public ResponseEntity<java.util.List<app.flo.dto.TaskDTO>> getTasksByAssignee(@PathVariable String assignee) {
+        try {
+            java.util.List<Task> tasks = flowableTaskService.getTasksByAssignee(assignee);
+            java.util.List<app.flo.dto.TaskDTO> taskDTOs = tasks.stream()
+                .map(app.flo.dto.TaskDTO::new)
+                .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(taskDTOs);
+        } catch (Exception e) {
+            System.err.println("Error getting tasks by assignee: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
-    @PutMapping("/{id}/status")
-    public ResponseEntity<Task> updateTaskStatus(@PathVariable Long id, @RequestBody java.util.Map<String, String> request) {
+    @GetMapping("/{taskId}/status")
+    public ResponseEntity<java.util.Map<String, String>> getTaskStatus(@PathVariable String taskId) {
         try {
-            String status = request.get("status");
-            if (status != null) {
-                Task task = taskService.updateTaskStatus(id, app.flo.enums.TaskStatus.valueOf(status.toUpperCase()));
-                return task != null ? ResponseEntity.ok(task) : ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.badRequest().build();
+            Task task = flowableTaskService.getFlowableTask(taskId);
+            String status = task != null ? "ACTIVE" : "COMPLETED";
+            return ResponseEntity.ok(java.util.Map.of("status", status));
         } catch (Exception e) {
-            System.err.println("Error updating task status: " + e.getMessage());
-            return ResponseEntity.badRequest().build();
+            System.err.println("Error getting task status: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/{taskId}/completed")
+    public ResponseEntity<java.util.Map<String, Boolean>> isTaskCompleted(@PathVariable String taskId) {
+        try {
+            Task task = flowableTaskService.getFlowableTask(taskId);
+            boolean completed = task == null; // If not found in Flowable, it's completed
+            return ResponseEntity.ok(java.util.Map.of("completed", completed));
+        } catch (Exception e) {
+            System.err.println("Error checking task completion: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
     
     @PutMapping("/{id}/completion-date")
-    public ResponseEntity<Task> setCompletionWorkingDay(@PathVariable Long id, @RequestBody java.util.Map<String, String> request) {
+    public ResponseEntity<TaskMetadata> setCompletionWorkingDay(@PathVariable Long id, @RequestBody java.util.Map<String, String> request) {
         try {
-            Task task = taskService.getTaskById(id);
+            TaskMetadata task = taskService.getTaskById(id);
             if (task != null) {
                 String completionDate = request.get("completionWorkingDay");
                 if (completionDate != null) {
@@ -167,10 +201,21 @@ public class TaskController {
         }
     }
     
-    @PostMapping("/workflow/{workflowId}/add")
-    public ResponseEntity<Task> addTaskToWorkflow(@PathVariable Long workflowId, @RequestBody java.util.Map<String, Object> taskData) {
+    @GetMapping("/flowable/{flowableTaskId}/metadata")
+    public ResponseEntity<TaskMetadata> getTaskMetadataByFlowableId(@PathVariable String flowableTaskId) {
         try {
-            Task task = new Task();
+            TaskMetadata metadata = taskService.getTaskMetadataByFlowableTaskId(flowableTaskId);
+            return metadata != null ? ResponseEntity.ok(metadata) : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.err.println("Error getting task metadata: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/workflow/{workflowInstanceId}/add")
+    public ResponseEntity<TaskMetadata> addTaskToWorkflowInstance(@PathVariable Long workflowInstanceId, @RequestBody java.util.Map<String, Object> taskData) {
+        try {
+            TaskMetadata task = new TaskMetadata();
             task.setName((String) taskData.get("name"));
             task.setTaskType(app.flo.enums.TaskType.valueOf(((String) taskData.get("taskType")).toUpperCase()));
             
@@ -181,15 +226,11 @@ public class TaskController {
                 task.setTaskGroup((String) taskData.get("taskGroup"));
             }
             
-            app.flo.entity.Workflow workflow = taskService.getWorkflowById(workflowId);
-            if (workflow != null) {
-                task.setWorkflow(workflow);
-                task.setTaskId("dynamic_task_" + System.currentTimeMillis());
-                return ResponseEntity.ok(taskRepository.save(task));
-            }
-            return ResponseEntity.notFound().build();
+            // This is deprecated - should use FlowableTaskService.createTaskMetadata
+            task.setTaskId("dynamic_task_" + System.currentTimeMillis());
+            return ResponseEntity.ok(taskRepository.save(task));
         } catch (Exception e) {
-            System.err.println("Error adding task to workflow: " + e.getMessage());
+            System.err.println("Error adding task to workflow instance: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
