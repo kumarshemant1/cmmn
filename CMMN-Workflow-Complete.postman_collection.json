@@ -126,6 +126,17 @@
 							"path": ["api", "tasks", "workflow", "1"]
 						}
 					}
+				},
+				{
+					"name": "2.4 Get Workflow by Case Instance ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/workflows/case/abc123-case-instance-id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "workflows", "case", "abc123-case-instance-id"]
+						}
+					}
 				}
 			]
 		},
@@ -143,6 +154,21 @@
 									"key": "file",
 									"type": "file",
 									"src": []
+								},
+								{
+									"key": "retainFile",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "keepVersion",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "keepHistory",
+									"value": "false",
+									"type": "text"
 								}
 							]
 						},
@@ -182,7 +208,23 @@
 					}
 				},
 				{
-					"name": "3.4 Consolidate Files",
+					"name": "3.4 Set Task Completion Working Day",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"completionWorkingDay\": \"2024-01-15T17:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/completion-date",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "completion-date"]
+						}
+					}
+				},
+				{
+					"name": "3.5 Consolidate Files",
 					"request": {
 						"method": "POST",
 						"url": {
@@ -220,7 +262,18 @@
 					}
 				},
 				{
-					"name": "4.3 Download File",
+					"name": "4.3 Get BusinessFile Details",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/files/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "files", "1"]
+						}
+					}
+				},
+				{
+					"name": "4.4 Download File",
 					"request": {
 						"method": "GET",
 						"url": {
@@ -231,7 +284,7 @@
 					}
 				},
 				{
-					"name": "4.4 Get Tasks by Assignee",
+					"name": "4.5 Get Tasks by Assignee",
 					"request": {
 						"method": "GET",
 						"url": {
@@ -242,7 +295,7 @@
 					}
 				},
 				{
-					"name": "4.5 Get CMMN Definition",
+					"name": "4.6 Get CMMN Definition",
 					"request": {
 						"method": "GET",
 						"url": {
@@ -253,7 +306,7 @@
 					}
 				},
 				{
-					"name": "4.6 Download CMMN File",
+					"name": "4.7 Download CMMN File",
 					"request": {
 						"method": "GET",
 						"url": {

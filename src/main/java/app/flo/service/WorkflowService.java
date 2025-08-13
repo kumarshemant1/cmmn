@@ -73,10 +73,10 @@ public class WorkflowService {
         workflow = workflowRepository.save(workflow);
         System.out.println("Workflow saved with ID: " + workflow.getId());
         
-        // Generate CMMN content (in-memory)
+        // Generate and persist CMMN content to disk
         try {
             String cmmnContent = cmmnGeneratorService.generateCmmnContent(request);
-            System.out.println("CMMN content generated for workflow: " + workflow.getName());
+            System.out.println("CMMN content generated and saved for workflow: " + workflow.getName());
         } catch (Exception e) {
             System.err.println("Failed to generate CMMN content: " + e.getMessage());
         }
@@ -95,6 +95,9 @@ public class WorkflowService {
             for (app.flo.dto.WorkflowDefinitionRequest.TaskDefinition taskDef : request.getTasks()) {
                 taskService.createTaskFromDefinition(taskDef, workflow.getId());
             }
+            
+            // Sync tasks with Flowable engine
+            taskService.syncTasksWithFlowable(workflow.getId());
         }
         
         return workflow;

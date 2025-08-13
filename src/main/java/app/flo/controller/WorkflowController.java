@@ -92,4 +92,10 @@ public class WorkflowController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+    
+    @GetMapping("/case/{caseInstanceId}")
+    public ResponseEntity<Workflow> getWorkflowByCaseId(@PathVariable String caseInstanceId) {
+        Workflow workflow = workflowService.getWorkflowByCaseId(caseInstanceId);
+        return workflow != null ? ResponseEntity.ok(workflow) : ResponseEntity.notFound().build();
+    }
 }

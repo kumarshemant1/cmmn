@@ -46,9 +46,32 @@ public class TaskService {
             app.flo.entity.Workflow workflow = workflowRepository.findById(workflowId).orElse(null);
             if (workflow != null) {
                 task.setWorkflow(workflow);
-                // Generate task ID as per standard
-                String taskId = "task_" + taskDef.getId();
-                task.setTaskId(taskId);
+                
+                // Create Flowable task if case instance exists
+                if (workflow.getCaseInstanceId() != null) {
+                    try {
+                        // Query existing Flowable tasks for this case
+                        List<org.flowable.task.api.Task> flowableTasks = cmmnTaskService.createTaskQuery()
+                            .caseInstanceId(workflow.getCaseInstanceId())
+                            .taskName(taskDef.getName())
+                            .list();
+                        
+                        if (!flowableTasks.isEmpty()) {
+                            // Use existing Flowable task ID
+                            task.setTaskId(flowableTasks.get(0).getId());
+                        } else {
+                            // Fallback to manual ID if Flowable task not found
+                            task.setTaskId("task_" + taskDef.getId() + "_" + workflowId);
+                        }
+                    } catch (Exception e) {
+                        // Fallback to manual ID if Flowable query fails
+                        task.setTaskId("task_" + taskDef.getId() + "_" + workflowId);
+                        System.err.println("Failed to query Flowable tasks, using fallback ID: " + e.getMessage());
+                    }
+                } else {
+                    // No case instance yet, use manual ID
+                    task.setTaskId("task_" + taskDef.getId() + "_" + workflowId);
+                }
             }
             
             return taskRepository.save(task);
@@ -83,6 +106,10 @@ public class TaskService {
     
     public app.flo.entity.BusinessFile uploadFileToTask(Long taskId, org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
         return fileService.uploadFile(taskId, file);
+    }
+    
+    public app.flo.entity.BusinessFile uploadFileToTask(Long taskId, org.springframework.web.multipart.MultipartFile file, Boolean retainFile, Boolean keepVersion, Boolean keepHistory) throws java.io.IOException {
+        return fileService.uploadFile(taskId, file, retainFile, keepVersion, keepHistory);
     }
     
     public java.util.List<app.flo.entity.BusinessFile> getTaskFiles(Long taskId) {
@@ -135,5 +162,35 @@ public class TaskService {
     
     public app.flo.entity.Workflow getWorkflowById(Long workflowId) {
         return workflowRepository.findById(workflowId).orElse(null);
+    }
+    
+    public void syncTasksWithFlowable(Long workflowId) {
+        app.flo.entity.Workflow workflow = workflowRepository.findById(workflowId).orElse(null);
+        if (workflow != null && workflow.getCaseInstanceId() != null) {
+            try {
+                // Get Flowable tasks for this case instance
+                List<org.flowable.task.api.Task> flowableTasks = cmmnTaskService.createTaskQuery()
+                    .caseInstanceId(workflow.getCaseInstanceId())
+                    .list();
+                
+                // Update our tasks with Flowable task IDs
+                List<Task> ourTasks = taskRepository.findByWorkflowId(workflowId);
+                for (Task ourTask : ourTasks) {
+                    for (org.flowable.task.api.Task flowableTask : flowableTasks) {
+                        if (ourTask.getName().equals(flowableTask.getName())) {
+                            ourTask.setTaskId(flowableTask.getId());
+                            if (flowableTask.getAssignee() != null) {
+                                ourTask.setAssignee(flowableTask.getAssignee());
+                            }
+                            taskRepository.save(ourTask);
+                            break;
+                        }
+                    }
+                }
+                System.out.println("Synced " + ourTasks.size() + " tasks with Flowable engine");
+            } catch (Exception e) {
+                System.err.println("Failed to sync tasks with Flowable: " + e.getMessage());
+            }
+        }
     }
 }

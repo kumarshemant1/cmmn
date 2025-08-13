@@ -50,7 +50,7 @@ public class ConsolidationService {
             
             List<BusinessFile> files = businessFileRepository.findByTaskId(task.getId());
             for (BusinessFile file : files) {
-                content.append("File: ").append(file.getFileName()).append("\n");
+                content.append("File: ").append(file.getBusinessFileName()).append("\n");
                 content.append(Files.readString(Paths.get(file.getFilePath())));
                 content.append("\n\n");
             }
@@ -59,10 +59,13 @@ public class ConsolidationService {
         Files.write(consolidatedFile, content.toString().getBytes());
         
         BusinessFile consolidatedBusinessFile = new BusinessFile();
-        consolidatedBusinessFile.setFileName(consolidatedFileName);
+        consolidatedBusinessFile.setBusinessFileName(consolidatedFileName);
         consolidatedBusinessFile.setFilePath(consolidatedFile.toString());
         consolidatedBusinessFile.setFileSize((long) content.length());
         consolidatedBusinessFile.setContentType("text/plain");
+        consolidatedBusinessFile.setRetainFile(true);
+        consolidatedBusinessFile.setKeepVersion(true);
+        consolidatedBusinessFile.setKeepHistory(true);
         
         return businessFileRepository.save(consolidatedBusinessFile);
     }

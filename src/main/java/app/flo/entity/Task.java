@@ -50,6 +50,9 @@ public class Task {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
     
+    @Column(name = "completion_working_day")
+    private LocalDateTime completionWorkingDay;
+    
     public Task() {}
     
     public Long getId() { return id; }
@@ -84,6 +87,9 @@ public class Task {
     
     public String getTaskGroup() { return taskGroup; }
     public void setTaskGroup(String taskGroup) { this.taskGroup = taskGroup; }
+    
+    public LocalDateTime getCompletionWorkingDay() { return completionWorkingDay; }
+    public void setCompletionWorkingDay(LocalDateTime completionWorkingDay) { this.completionWorkingDay = completionWorkingDay; }
     
     @PrePersist
     protected void onCreate() {

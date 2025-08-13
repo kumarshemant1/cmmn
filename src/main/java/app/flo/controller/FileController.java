@@ -34,6 +34,12 @@ public class FileController {
         return ResponseEntity.ok(fileService.getFilesByTask(taskId));
     }
     
+    @GetMapping("/{id}")
+    public ResponseEntity<BusinessFile> getFileDetails(@PathVariable Long id) {
+        BusinessFile businessFile = fileService.getFileById(id);
+        return businessFile != null ? ResponseEntity.ok(businessFile) : ResponseEntity.notFound().build();
+    }
+    
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> downloadFile(@PathVariable Long id) {
         BusinessFile businessFile = fileService.getFileById(id);
@@ -41,7 +47,7 @@ public class FileController {
         
         Resource resource = new FileSystemResource(businessFile.getFilePath());
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + businessFile.getFileName() + "\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + businessFile.getBusinessFileName() + "\"")
             .body(resource);
     }
 }

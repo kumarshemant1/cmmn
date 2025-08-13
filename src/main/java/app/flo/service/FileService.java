@@ -28,6 +28,10 @@ public class FileService {
     private final String uploadDir = "uploads/";
     
     public BusinessFile uploadFile(Long taskId, MultipartFile file) throws IOException {
+        return uploadFile(taskId, file, false, false, false);
+    }
+    
+    public BusinessFile uploadFile(Long taskId, MultipartFile file, Boolean retainFile, Boolean keepVersion, Boolean keepHistory) throws IOException {
         Task task = taskRepository.findById(taskId).orElse(null);
         if (task == null) return null;
         
@@ -41,11 +45,14 @@ public class FileService {
         Files.copy(file.getInputStream(), filePath);
         
         BusinessFile businessFile = new BusinessFile();
-        businessFile.setFileName(fileName);
+        businessFile.setBusinessFileName(fileName);
         businessFile.setFilePath(filePath.toString());
         businessFile.setContentType(file.getContentType());
         businessFile.setFileSize(file.getSize());
         businessFile.setTask(task);
+        businessFile.setRetainFile(retainFile != null ? retainFile : false);
+        businessFile.setKeepVersion(keepVersion != null ? keepVersion : false);
+        businessFile.setKeepHistory(keepHistory != null ? keepHistory : false);
         
         return businessFileRepository.save(businessFile);
     }

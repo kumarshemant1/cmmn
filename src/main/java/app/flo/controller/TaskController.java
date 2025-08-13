@@ -43,9 +43,14 @@ public class TaskController {
     }
     
     @PostMapping("/{id}/upload")
-    public ResponseEntity<app.flo.entity.BusinessFile> uploadFile(@PathVariable Long id, @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    public ResponseEntity<app.flo.entity.BusinessFile> uploadFile(
+            @PathVariable Long id, 
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "retainFile", required = false) Boolean retainFile,
+            @RequestParam(value = "keepVersion", required = false) Boolean keepVersion,
+            @RequestParam(value = "keepHistory", required = false) Boolean keepHistory) {
         try {
-            app.flo.entity.BusinessFile businessFile = taskService.uploadFileToTask(id, file);
+            app.flo.entity.BusinessFile businessFile = taskService.uploadFileToTask(id, file, retainFile, keepVersion, keepHistory);
             return businessFile != null ? ResponseEntity.ok(businessFile) : ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -77,6 +82,24 @@ public class TaskController {
     public ResponseEntity<List<Task>> getTasksByAssignee(@PathVariable String assignee) {
         List<Task> tasks = taskRepository.findByAssignee(assignee);
         return ResponseEntity.ok(tasks);
+    }
+    
+    @PutMapping("/{id}/completion-date")
+    public ResponseEntity<Task> setCompletionWorkingDay(@PathVariable Long id, @RequestBody java.util.Map<String, String> request) {
+        try {
+            Task task = taskService.getTaskById(id);
+            if (task != null) {
+                String completionDate = request.get("completionWorkingDay");
+                if (completionDate != null) {
+                    task.setCompletionWorkingDay(java.time.LocalDateTime.parse(completionDate));
+                    taskRepository.save(task);
+                    return ResponseEntity.ok(task);
+                }
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
     
     @PostMapping("/workflow/{workflowId}/add")

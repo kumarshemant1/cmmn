@@ -46,9 +46,17 @@ public class CmmnService {
                 return workflow.getCaseInstanceId();
             }
             
-            // Generate UUID-based case instance ID (simplified approach)
-            String caseInstanceId = java.util.UUID.randomUUID().toString();
-                
+            // Get or deploy case definition
+            String caseDefinitionKey = getCaseDefinitionKey(workflow.getName());
+            
+            // Create case instance using existing case definition
+            CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder()
+                .caseDefinitionKey(caseDefinitionKey)
+                .businessKey("workflow_" + workflowId)
+                .name(workflow.getName())
+                .start();
+            
+            String caseInstanceId = caseInstance.getId();
             workflow.setCaseInstanceId(caseInstanceId);
             workflowRepository.save(workflow);
             
@@ -117,14 +125,43 @@ public class CmmnService {
                 throw new RuntimeException("Workflow not found with ID: " + workflowId);
             }
             
-            // Generate new case instance ID for triggered workflow
-            String caseInstanceId = java.util.UUID.randomUUID().toString();
+            // Get existing case definition key
+            String caseDefinitionKey = getCaseDefinitionKey(workflow.getName());
             
-            System.out.println("Triggered workflow: " + workflow.getName() + " with case instance: " + caseInstanceId);
+            // Create new case instance from existing definition
+            CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder()
+                .caseDefinitionKey(caseDefinitionKey)
+                .businessKey("triggered_workflow_" + workflowId)
+                .name(workflow.getName() + " (Triggered)")
+                .start();
+            
+            String caseInstanceId = caseInstance.getId();
+            System.out.println("Triggered workflow: " + workflow.getName() + " with Flowable case instance: " + caseInstanceId);
             return caseInstanceId;
         } catch (Exception e) {
             System.err.println("Failed to trigger workflow: " + e.getMessage());
             throw new RuntimeException("Failed to trigger workflow: " + e.getMessage(), e);
         }
+    }
+    
+    private String getCaseDefinitionKey(String workflowName) {
+        String caseDefinitionKey = workflowName.replaceAll("\\s+", "").toLowerCase() + "Case";
+        
+        // Check if case definition already exists
+        boolean exists = cmmnRepositoryService.createCaseDefinitionQuery()
+            .caseDefinitionKey(caseDefinitionKey)
+            .count() > 0;
+        
+        if (!exists) {
+            // Deploy CMMN only if not already deployed
+            String cmmnContent = cmmnGeneratorService.getCmmnContent(workflowName);
+            if (cmmnContent != null) {
+                deployCmmnFromMemory(workflowName, cmmnContent);
+            } else {
+                throw new RuntimeException("CMMN content not found for workflow: " + workflowName);
+            }
+        }
+        
+        return caseDefinitionKey;
     }
 }
