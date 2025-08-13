@@ -12,7 +12,7 @@ public class CmmnGeneratorService {
     
     private final String cmmnDir = "src/main/resources/processes/";
     
-    public String generateCmmnFile(WorkflowDefinitionRequest request) throws IOException {
+    public String generateCmmnContent(WorkflowDefinitionRequest request) {
         StringBuilder cmmn = new StringBuilder();
         
         cmmn.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -25,30 +25,30 @@ public class CmmnGeneratorService {
         cmmn.append("        <casePlanModel id=\"casePlanModel\">\n");
         
         // Generate plan items
-        for (WorkflowDefinitionRequest.TaskDefinition task : request.getTasks()) {
-            String planItemId = "planItem_" + task.getId();
-            String taskId = "task_" + task.getId();
-            cmmn.append("            <planItem id=\"").append(planItemId).append("\" definitionRef=\"").append(taskId).append("\"/>\n");
-        }
-        
-        cmmn.append("\n");
-        
-        // Generate human tasks
-        for (WorkflowDefinitionRequest.TaskDefinition task : request.getTasks()) {
-            String taskId = "task_" + task.getId();
-            cmmn.append("            <humanTask id=\"").append(taskId).append("\" name=\"").append(task.getName()).append("\" flowable:assignee=\"user\"/>\n");
+        if (request.getTasks() != null) {
+            for (WorkflowDefinitionRequest.TaskDefinition task : request.getTasks()) {
+                String planItemId = "planItem_" + task.getId();
+                String taskId = "task_" + task.getId();
+                cmmn.append("            <planItem id=\"").append(planItemId).append("\" definitionRef=\"").append(taskId).append("\"/>\n");
+            }
+            
+            cmmn.append("\n");
+            
+            // Generate human tasks with proper IDs
+            for (WorkflowDefinitionRequest.TaskDefinition task : request.getTasks()) {
+                String taskId = "task_" + task.getId();
+                String taskKey = caseId + "_" + task.getId(); // Unique task key
+                cmmn.append("            <humanTask id=\"").append(taskId)
+                    .append("\" name=\"").append(task.getName())
+                    .append("\" flowable:assignee=\"user\"")
+                    .append(" flowable:formKey=\"").append(taskKey).append("\"/>\n");
+            }
         }
         
         cmmn.append("        </casePlanModel>\n");
         cmmn.append("    </case>\n");
         cmmn.append("</definitions>");
         
-        // Save to file
-        String fileName = caseId + ".cmmn";
-        Path filePath = Paths.get(cmmnDir + fileName);
-        Files.createDirectories(filePath.getParent());
-        Files.write(filePath, cmmn.toString().getBytes());
-        
-        return fileName;
+        return cmmn.toString();
     }
 }

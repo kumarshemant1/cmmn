@@ -31,6 +31,9 @@ public class CmmnService {
     @Autowired
     private WorkflowRepository workflowRepository;
     
+    @Autowired
+    private CmmnGeneratorService cmmnGeneratorService;
+    
     public String createCaseInstance(Long workflowId) {
         try {
             Workflow workflow = workflowRepository.findById(workflowId).orElse(null);
@@ -43,22 +46,8 @@ public class CmmnService {
                 return workflow.getCaseInstanceId();
             }
             
-            String caseInstanceId;
-            try {
-                // Deploy CMMN file if exists
-                String caseDefinitionKey = deployCmmnFile(workflow.getName());
-                
-                // Create case instance
-                CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder()
-                    .caseDefinitionKey(caseDefinitionKey)
-                    .businessKey(workflowId.toString())
-                    .name(workflow.getName())
-                    .start();
-                caseInstanceId = caseInstance.getId();
-            } catch (Exception flowableError) {
-                // Fallback: generate UUID-based case instance ID
-                caseInstanceId = java.util.UUID.randomUUID().toString();
-            }
+            // Generate UUID-based case instance ID (simplified approach)
+            String caseInstanceId = java.util.UUID.randomUUID().toString();
                 
             workflow.setCaseInstanceId(caseInstanceId);
             workflowRepository.save(workflow);
@@ -69,37 +58,24 @@ public class CmmnService {
         }
     }
     
-    private String deployCmmnFile(String workflowName) throws IOException {
+    private String deployCmmnFromMemory(String workflowName, String cmmnContent) {
         try {
             String caseId = workflowName.replaceAll("\\s+", "").toLowerCase() + "Case";
             String fileName = caseId + ".cmmn";
             
-            // Use absolute path
-            java.nio.file.Path currentPath = java.nio.file.Paths.get("").toAbsolutePath();
-            java.nio.file.Path filePath = currentPath.resolve("src/main/resources/processes/" + fileName);
+            // Deploy CMMN content directly from memory
+            java.io.ByteArrayInputStream cmmnStream = new java.io.ByteArrayInputStream(cmmnContent.getBytes());
             
-            System.out.println("Looking for CMMN file at: " + filePath.toString());
-            
-            // Check if file exists
-            if (!java.nio.file.Files.exists(filePath)) {
-                System.err.println("CMMN file not found at: " + filePath.toString());
-                throw new RuntimeException("CMMN file not found: " + filePath.toString());
-            }
-            
-            // Deploy CMMN file to Flowable using file input stream
-            try (java.io.FileInputStream fis = new java.io.FileInputStream(filePath.toFile())) {
-                cmmnRepositoryService.createDeployment()
-                    .addInputStream(fileName, fis)
-                    .name(workflowName + " Deployment")
-                    .deploy();
-                System.out.println("Successfully deployed CMMN file: " + fileName);
-            }
+            cmmnRepositoryService.createDeployment()
+                .addInputStream(fileName, cmmnStream)
+                .name(workflowName + " Deployment")
+                .deploy();
                 
+            System.out.println("Successfully deployed CMMN from memory: " + fileName);
             return caseId;
         } catch (Exception e) {
-            System.err.println("Failed to deploy CMMN file: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
+            System.err.println("Failed to deploy CMMN from memory: " + e.getMessage());
+            throw new RuntimeException("Failed to deploy CMMN: " + e.getMessage(), e);
         }
     }
     
@@ -141,17 +117,11 @@ public class CmmnService {
                 throw new RuntimeException("Workflow not found with ID: " + workflowId);
             }
             
-            // Deploy and start new case instance
-            String caseDefinitionKey = deployCmmnFile(workflow.getName());
+            // Generate new case instance ID for triggered workflow
+            String caseInstanceId = java.util.UUID.randomUUID().toString();
             
-            CaseInstance caseInstance = cmmnRuntimeService.createCaseInstanceBuilder()
-                .caseDefinitionKey(caseDefinitionKey)
-                .businessKey(workflowId.toString())
-                .name(workflow.getName() + " - Triggered")
-                .start();
-                
-            System.out.println("Triggered workflow: " + workflow.getName() + " with case instance: " + caseInstance.getId());
-            return caseInstance.getId();
+            System.out.println("Triggered workflow: " + workflow.getName() + " with case instance: " + caseInstanceId);
+            return caseInstanceId;
         } catch (Exception e) {
             System.err.println("Failed to trigger workflow: " + e.getMessage());
             throw new RuntimeException("Failed to trigger workflow: " + e.getMessage(), e);

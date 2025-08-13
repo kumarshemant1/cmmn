@@ -19,4 +19,7 @@ public interface WorkflowRepository extends JpaRepository<Workflow, Long> {
     
     @org.springframework.data.jpa.repository.Query("SELECT DISTINCT w FROM Workflow w LEFT JOIN FETCH w.tasks t LEFT JOIN FETCH t.businessFiles WHERE w.id = :id")
     java.util.Optional<Workflow> findByIdWithTasksAndFilesComplete(@org.springframework.data.repository.query.Param("id") Long id);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT w FROM Workflow w LEFT JOIN FETCH w.tasks WHERE w.scheduledTime <= :now AND w.frequency IS NOT NULL")
+    java.util.List<Workflow> findScheduledWorkflows(@org.springframework.data.repository.query.Param("now") java.time.LocalDateTime now);
 }

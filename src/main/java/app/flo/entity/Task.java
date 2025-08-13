@@ -1,6 +1,7 @@
 package app.flo.entity;
 
-
+import app.flo.enums.TaskStatus;
+import app.flo.enums.TaskType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -25,8 +26,14 @@ public class Task {
     @Column(name = "status")
     private TaskStatus status = TaskStatus.ACTIVE;
     
-    @Column(name = "cmmn_task_id")
-    private String cmmnTaskId;
+    @Column(name = "task_id")
+    private String taskId;
+    
+    @Column(name = "assignee")
+    private String assignee;
+    
+    @Column(name = "task_group")
+    private String taskGroup;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workflow_id")
@@ -69,8 +76,14 @@ public class Task {
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
     
-    public String getCmmnTaskId() { return cmmnTaskId; }
-    public void setCmmnTaskId(String cmmnTaskId) { this.cmmnTaskId = cmmnTaskId; }
+    public String getTaskId() { return taskId; }
+    public void setTaskId(String taskId) { this.taskId = taskId; }
+    
+    public String getAssignee() { return assignee; }
+    public void setAssignee(String assignee) { this.assignee = assignee; }
+    
+    public String getTaskGroup() { return taskGroup; }
+    public void setTaskGroup(String taskGroup) { this.taskGroup = taskGroup; }
     
     @PrePersist
     protected void onCreate() {

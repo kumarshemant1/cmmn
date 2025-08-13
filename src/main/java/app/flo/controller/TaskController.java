@@ -2,6 +2,7 @@ package app.flo.controller;
 
 import app.flo.entity.Task;
 import app.flo.service.TaskService;
+import app.flo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +15,13 @@ public class TaskController {
     @Autowired
     private TaskService taskService;
     
+    @Autowired
+    private TaskRepository taskRepository;
+    
     @PostMapping
     public ResponseEntity<Task> createTask(@RequestParam String name, @RequestParam Long workflowId, @RequestParam String taskType) {
         Task task = taskService.createTask(name, workflowId);
-        task.setTaskType(app.flo.entity.TaskType.valueOf(taskType));
+        task.setTaskType(app.flo.enums.TaskType.valueOf(taskType));
         return ResponseEntity.ok(task);
     }
     
@@ -61,5 +65,39 @@ public class TaskController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<Task> assignTask(@PathVariable Long id, @RequestParam String assignee) {
+        Task task = taskService.assignTask(id, assignee);
+        return task != null ? ResponseEntity.ok(task) : ResponseEntity.notFound().build();
+    }
+    
+    @GetMapping("/assignee/{assignee}")
+    public ResponseEntity<List<Task>> getTasksByAssignee(@PathVariable String assignee) {
+        List<Task> tasks = taskRepository.findByAssignee(assignee);
+        return ResponseEntity.ok(tasks);
+    }
+    
+    @PostMapping("/workflow/{workflowId}/add")
+    public ResponseEntity<Task> addTaskToWorkflow(@PathVariable Long workflowId, @RequestBody java.util.Map<String, Object> taskData) {
+        Task task = new Task();
+        task.setName((String) taskData.get("name"));
+        task.setTaskType(app.flo.enums.TaskType.valueOf(((String) taskData.get("taskType")).toUpperCase()));
+        
+        if (taskData.containsKey("assignee")) {
+            task.setAssignee((String) taskData.get("assignee"));
+        }
+        if (taskData.containsKey("taskGroup")) {
+            task.setTaskGroup((String) taskData.get("taskGroup"));
+        }
+        
+        app.flo.entity.Workflow workflow = taskService.getWorkflowById(workflowId);
+        if (workflow != null) {
+            task.setWorkflow(workflow);
+            task.setTaskId("dynamic_task_" + System.currentTimeMillis());
+            return ResponseEntity.ok(taskRepository.save(task));
+        }
+        return ResponseEntity.notFound().build();
     }
 }

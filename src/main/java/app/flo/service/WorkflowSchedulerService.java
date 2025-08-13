@@ -1,13 +1,13 @@
 package app.flo.service;
 
 import app.flo.entity.Workflow;
-import app.flo.enums.Frequency;
+import app.flo.entity.Task;
+import app.flo.enums.TaskStatus;
 import app.flo.repository.WorkflowRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -19,65 +19,86 @@ public class WorkflowSchedulerService {
     @Autowired
     private CmmnService cmmnService;
     
+    @Autowired
+    private TaskService taskService;
+    
     @Scheduled(fixedRate = 60000) // Check every minute
-    public void executeScheduledWorkflows() {
+    public void checkAndTriggerWorkflows() {
         LocalDateTime now = LocalDateTime.now();
-        List<Workflow> workflows = workflowRepository.findAll();
+        List<Workflow> scheduledWorkflows = workflowRepository.findScheduledWorkflows(now);
         
-        for (Workflow workflow : workflows) {
-            if (shouldExecuteWorkflow(workflow, now)) {
-                executeWorkflow(workflow);
-            }
+        for (Workflow workflow : scheduledWorkflows) {
+            triggerWorkflowExecution(workflow);
         }
     }
     
-    private boolean shouldExecuteWorkflow(Workflow workflow, LocalDateTime now) {
-        if (workflow.getFrequency() == null || workflow.getExecutionTime() == null) {
-            return false;
-        }
-        
-        LocalTime currentTime = now.toLocalTime();
-        if (!currentTime.equals(workflow.getExecutionTime())) {
-            return false;
-        }
-        
-        switch (workflow.getFrequency()) {
-            case DAILY:
-                return true;
-            case WEEKLY:
-                return isNthWorkingDayOfWeek(now, workflow.getNthWorkingDay());
-            case MONTHLY:
-                return isNthWorkingDayOfMonth(now, workflow.getNthWorkingDay());
-            default:
-                return false;
-        }
-    }
-    
-    private boolean isNthWorkingDayOfWeek(LocalDateTime date, Integer nthDay) {
-        if (nthDay == null) return false;
-        int dayOfWeek = date.getDayOfWeek().getValue(); // 1=Monday, 7=Sunday
-        return dayOfWeek <= 5 && dayOfWeek == nthDay; // 1-5 for Mon-Fri
-    }
-    
-    private boolean isNthWorkingDayOfMonth(LocalDateTime date, Integer nthDay) {
-        if (nthDay == null) return false;
-        // Calculate working day of month (simplified - excludes weekends only)
-        int workingDay = 0;
-        for (int day = 1; day <= date.getDayOfMonth(); day++) {
-            LocalDateTime checkDate = date.withDayOfMonth(day);
-            if (checkDate.getDayOfWeek().getValue() <= 5) { // Mon-Fri
-                workingDay++;
-            }
-        }
-        return workingDay == nthDay;
-    }
-    
-    private void executeWorkflow(Workflow workflow) {
+    public void triggerWorkflowExecution(Workflow workflow) {
         try {
-            cmmnService.triggerWorkflow(workflow.getId());
-            System.out.println("Executed scheduled workflow: " + workflow.getName());
+            // Start new case instance
+            String caseInstanceId = cmmnService.triggerWorkflow(workflow.getId());
+            
+            // Initialize first task
+            initializeFirstTask(workflow);
+            
+            System.out.println("Triggered workflow: " + workflow.getName() + 
+                             " with case instance: " + caseInstanceId);
         } catch (Exception e) {
-            System.err.println("Failed to execute workflow " + workflow.getName() + ": " + e.getMessage());
+            System.err.println("Failed to trigger workflow " + workflow.getId() + ": " + e.getMessage());
+        }
+    }
+    
+    private void initializeFirstTask(Workflow workflow) {
+        List<Task> tasks = workflow.getTasks();
+        if (tasks != null && !tasks.isEmpty()) {
+            Task firstTask = tasks.get(0);
+            firstTask.setStatus(TaskStatus.ACTIVE);
+            taskService.updateTaskStatus(firstTask.getId(), TaskStatus.ACTIVE);
+        }
+    }
+    
+    public void completeTaskAndMoveNext(Long taskId) {
+        Task currentTask = taskService.getTaskById(taskId);
+        if (currentTask == null) return;
+        
+        // Complete current task
+        taskService.updateTaskStatus(taskId, TaskStatus.COMPLETED);
+        
+        // Check if task is part of a group
+        if (currentTask.getTaskGroup() != null) {
+            // Check if all tasks in group are completed
+            if (isTaskGroupCompleted(currentTask.getTaskGroup())) {
+                moveToNextTaskGroup(currentTask.getWorkflow());
+            }
+        } else {
+            // Single task - move to next immediately
+            moveToNextSingleTask(currentTask);
+        }
+    }
+    
+    private boolean isTaskGroupCompleted(String taskGroup) {
+        List<Task> groupTasks = taskService.getTasksByGroup(taskGroup);
+        return groupTasks.stream().allMatch(task -> task.getStatus() == TaskStatus.COMPLETED);
+    }
+    
+    private void moveToNextTaskGroup(Workflow workflow) {
+        List<Task> tasks = workflow.getTasks();
+        // Find next ungrouped task or different group and activate
+        tasks.stream()
+            .filter(t -> t.getStatus() != TaskStatus.COMPLETED && t.getStatus() != TaskStatus.ACTIVE)
+            .findFirst()
+            .ifPresent(nextTask -> taskService.updateTaskStatus(nextTask.getId(), TaskStatus.ACTIVE));
+    }
+    
+    private void moveToNextSingleTask(Task currentTask) {
+        Workflow workflow = currentTask.getWorkflow();
+        List<Task> tasks = workflow.getTasks();
+        
+        for (int i = 0; i < tasks.size(); i++) {
+            if (tasks.get(i).getId().equals(currentTask.getId()) && i + 1 < tasks.size()) {
+                Task nextTask = tasks.get(i + 1);
+                taskService.updateTaskStatus(nextTask.getId(), TaskStatus.ACTIVE);
+                break;
+            }
         }
     }
 }

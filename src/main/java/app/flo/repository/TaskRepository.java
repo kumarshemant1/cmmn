@@ -9,12 +9,16 @@ import java.util.List;
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
     List<Task> findByWorkflowId(Long workflowId);
-
-    Task findByCmmnTaskId(String cmmnTaskId);
     
     @org.springframework.data.jpa.repository.Query("SELECT t FROM Task t LEFT JOIN FETCH t.businessFiles WHERE t.workflow.id = :workflowId")
     List<Task> findByWorkflowIdWithFiles(@org.springframework.data.repository.query.Param("workflowId") Long workflowId);
     
     @org.springframework.data.jpa.repository.Query("SELECT t FROM Task t LEFT JOIN FETCH t.businessFiles WHERE t.id = :id")
     java.util.Optional<Task> findByIdWithFiles(@org.springframework.data.repository.query.Param("id") Long id);
+    
+    List<Task> findByAssignee(String assignee);
+    
+    List<Task> findByWorkflowIdAndTaskType(Long workflowId, app.flo.enums.TaskType taskType);
+    
+    List<Task> findByTaskGroup(String taskGroup);
 }

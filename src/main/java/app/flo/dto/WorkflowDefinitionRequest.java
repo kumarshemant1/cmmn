@@ -17,6 +17,8 @@ public class WorkflowDefinitionRequest {
         private String id;
         private String name;
         private String taskType;
+        private String assignee;
+        private String taskGroup;
         private Map<String, Object> position;
         private List<String> connections;
         
@@ -28,6 +30,12 @@ public class WorkflowDefinitionRequest {
         
         public String getTaskType() { return taskType; }
         public void setTaskType(String taskType) { this.taskType = taskType; }
+        
+        public String getAssignee() { return assignee; }
+        public void setAssignee(String assignee) { this.assignee = assignee; }
+        
+        public String getTaskGroup() { return taskGroup; }
+        public void setTaskGroup(String taskGroup) { this.taskGroup = taskGroup; }
         
         public Map<String, Object> getPosition() { return position; }
         public void setPosition(Map<String, Object> position) { this.position = position; }

@@ -73,12 +73,12 @@ public class WorkflowService {
         workflow = workflowRepository.save(workflow);
         System.out.println("Workflow saved with ID: " + workflow.getId());
         
-        // Generate CMMN file
+        // Generate CMMN content (in-memory)
         try {
-            String cmmnFileName = cmmnGeneratorService.generateCmmnFile(request);
-            System.out.println("CMMN file generated: " + cmmnFileName);
+            String cmmnContent = cmmnGeneratorService.generateCmmnContent(request);
+            System.out.println("CMMN content generated for workflow: " + workflow.getName());
         } catch (Exception e) {
-            System.err.println("Failed to generate CMMN file: " + e.getMessage());
+            System.err.println("Failed to generate CMMN content: " + e.getMessage());
         }
         
         // Create case instance
@@ -149,5 +149,19 @@ public class WorkflowService {
             });
         }
         return workflow;
+    }
+    
+    public Workflow updateWorkflowDefinition(Long workflowId, app.flo.dto.WorkflowDefinitionRequest request) {
+        Workflow workflow = workflowRepository.findById(workflowId).orElse(null);
+        if (workflow != null) {
+            workflow.setName(request.getName());
+            workflow.setFrequency(request.getFrequency());
+            if (request.getExecutionTime() != null) {
+                workflow.setExecutionTime(java.time.LocalTime.parse(request.getExecutionTime()));
+            }
+            workflow.setNthWorkingDay(request.getNthWorkingDay());
+            return workflowRepository.save(workflow);
+        }
+        return null;
     }
 }
