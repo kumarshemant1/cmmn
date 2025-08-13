@@ -20,9 +20,23 @@ public class TaskController {
     
     @PostMapping
     public ResponseEntity<Task> createTask(@RequestParam String name, @RequestParam Long workflowId, @RequestParam String taskType) {
-        Task task = taskService.createTask(name, workflowId);
-        task.setTaskType(app.flo.enums.TaskType.valueOf(taskType));
-        return ResponseEntity.ok(task);
+        try {
+            Task task = taskService.createTask(name, workflowId);
+            task.setTaskType(app.flo.enums.TaskType.valueOf(taskType.toUpperCase()));
+            
+            // Set workflow relationship
+            app.flo.entity.Workflow workflow = taskService.getWorkflowById(workflowId);
+            if (workflow != null) {
+                task.setWorkflow(workflow);
+                task = taskRepository.save(task);
+                return ResponseEntity.ok(task);
+            } else {
+                return ResponseEntity.badRequest().build();
+            }
+        } catch (Exception e) {
+            System.err.println("Error creating task: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
     @GetMapping("/workflow/{workflowId}")
@@ -32,8 +46,20 @@ public class TaskController {
     
     @GetMapping("/{id}")
     public ResponseEntity<Task> getTask(@PathVariable Long id) {
-        Task task = taskService.getTaskById(id);
-        return task != null ? ResponseEntity.ok(task) : ResponseEntity.notFound().build();
+        try {
+            System.out.println("Getting task with ID: " + id);
+            Task task = taskService.getTaskById(id);
+            if (task != null) {
+                System.out.println("Found task: " + task.getName());
+                return ResponseEntity.ok(task);
+            } else {
+                System.out.println("Task not found with ID: " + id);
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting task: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
     @PutMapping("/{id}/complete")
@@ -50,16 +76,39 @@ public class TaskController {
             @RequestParam(value = "keepVersion", required = false) Boolean keepVersion,
             @RequestParam(value = "keepHistory", required = false) Boolean keepHistory) {
         try {
-            app.flo.entity.BusinessFile businessFile = taskService.uploadFileToTask(id, file, retainFile, keepVersion, keepHistory);
+            System.out.println("Upload request - TaskId: " + id + ", File: " + file.getOriginalFilename());
+            
+            if (file.isEmpty()) {
+                System.err.println("File is empty");
+                return ResponseEntity.badRequest().build();
+            }
+            
+            app.flo.entity.BusinessFile businessFile;
+            if (retainFile != null || keepVersion != null || keepHistory != null) {
+                businessFile = taskService.uploadFileToTask(id, file, retainFile, keepVersion, keepHistory);
+            } else {
+                businessFile = taskService.uploadFileToTask(id, file);
+            }
+            
             return businessFile != null ? ResponseEntity.ok(businessFile) : ResponseEntity.badRequest().build();
         } catch (Exception e) {
+            System.err.println("Upload error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
     
     @GetMapping("/{id}/files")
     public ResponseEntity<java.util.List<app.flo.entity.BusinessFile>> getTaskFiles(@PathVariable Long id) {
-        return ResponseEntity.ok(taskService.getTaskFiles(id));
+        try {
+            System.out.println("Getting files for task ID: " + id);
+            java.util.List<app.flo.entity.BusinessFile> files = taskService.getTaskFiles(id);
+            System.out.println("Found " + files.size() + " files for task " + id);
+            return ResponseEntity.ok(files);
+        } catch (Exception e) {
+            System.err.println("Error getting task files: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
     @PostMapping("/{id}/consolidate")
@@ -84,6 +133,21 @@ public class TaskController {
         return ResponseEntity.ok(tasks);
     }
     
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Task> updateTaskStatus(@PathVariable Long id, @RequestBody java.util.Map<String, String> request) {
+        try {
+            String status = request.get("status");
+            if (status != null) {
+                Task task = taskService.updateTaskStatus(id, app.flo.enums.TaskStatus.valueOf(status.toUpperCase()));
+                return task != null ? ResponseEntity.ok(task) : ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            System.err.println("Error updating task status: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
     @PutMapping("/{id}/completion-date")
     public ResponseEntity<Task> setCompletionWorkingDay(@PathVariable Long id, @RequestBody java.util.Map<String, String> request) {
         try {
@@ -98,29 +162,35 @@ public class TaskController {
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
+            System.err.println("Error setting completion date: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
     
     @PostMapping("/workflow/{workflowId}/add")
     public ResponseEntity<Task> addTaskToWorkflow(@PathVariable Long workflowId, @RequestBody java.util.Map<String, Object> taskData) {
-        Task task = new Task();
-        task.setName((String) taskData.get("name"));
-        task.setTaskType(app.flo.enums.TaskType.valueOf(((String) taskData.get("taskType")).toUpperCase()));
-        
-        if (taskData.containsKey("assignee")) {
-            task.setAssignee((String) taskData.get("assignee"));
+        try {
+            Task task = new Task();
+            task.setName((String) taskData.get("name"));
+            task.setTaskType(app.flo.enums.TaskType.valueOf(((String) taskData.get("taskType")).toUpperCase()));
+            
+            if (taskData.containsKey("assignee")) {
+                task.setAssignee((String) taskData.get("assignee"));
+            }
+            if (taskData.containsKey("taskGroup")) {
+                task.setTaskGroup((String) taskData.get("taskGroup"));
+            }
+            
+            app.flo.entity.Workflow workflow = taskService.getWorkflowById(workflowId);
+            if (workflow != null) {
+                task.setWorkflow(workflow);
+                task.setTaskId("dynamic_task_" + System.currentTimeMillis());
+                return ResponseEntity.ok(taskRepository.save(task));
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.err.println("Error adding task to workflow: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
-        if (taskData.containsKey("taskGroup")) {
-            task.setTaskGroup((String) taskData.get("taskGroup"));
-        }
-        
-        app.flo.entity.Workflow workflow = taskService.getWorkflowById(workflowId);
-        if (workflow != null) {
-            task.setWorkflow(workflow);
-            task.setTaskId("dynamic_task_" + System.currentTimeMillis());
-            return ResponseEntity.ok(taskRepository.save(task));
-        }
-        return ResponseEntity.notFound().build();
     }
 }

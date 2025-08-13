@@ -154,6 +154,27 @@
 									"key": "file",
 									"type": "file",
 									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/upload",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "upload"]
+						}
+					}
+				},
+				{
+					"name": "3.2 Upload File with Options",
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
 								},
 								{
 									"key": "retainFile",
@@ -180,7 +201,7 @@
 					}
 				},
 				{
-					"name": "3.2 Complete Task",
+					"name": "3.3 Complete Task",
 					"request": {
 						"method": "PUT",
 						"url": {
@@ -191,7 +212,7 @@
 					}
 				},
 				{
-					"name": "3.3 Assign/Reassign Task",
+					"name": "3.4 Assign/Reassign Task",
 					"request": {
 						"method": "PUT",
 						"url": {
@@ -208,7 +229,7 @@
 					}
 				},
 				{
-					"name": "3.4 Set Task Completion Working Day",
+					"name": "3.5 Set Task Completion Working Day",
 					"request": {
 						"method": "PUT",
 						"header": [{"key": "Content-Type", "value": "application/json"}],
@@ -224,13 +245,54 @@
 					}
 				},
 				{
-					"name": "3.5 Consolidate Files",
+					"name": "3.6 Update Task Status",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "status"]
+						}
+					}
+				},
+				{
+					"name": "3.7 Consolidate Files",
 					"request": {
 						"method": "POST",
 						"url": {
 							"raw": "{{baseUrl}}/api/tasks/4/consolidate",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "tasks", "4", "consolidate"]
+						}
+					}
+				},
+				{
+					"name": "3.8 Create Individual Task",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks?name=Manual Task&workflowId=1&taskType=UPLOAD",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks"],
+							"query": [
+								{
+									"key": "name",
+									"value": "Manual Task"
+								},
+								{
+									"key": "workflowId",
+									"value": "1"
+								},
+								{
+									"key": "taskType",
+									"value": "UPLOAD"
+								}
+							]
 						}
 					}
 				}
@@ -313,6 +375,28 @@
 							"raw": "{{baseUrl}}/api/cmmn/1/download",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "cmmn", "1", "download"]
+						}
+					}
+				},
+				{
+					"name": "4.8 Complete Task (Alternative)",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "tasks", "1", "complete"]
+						}
+					}
+				},
+				{
+					"name": "4.9 Test All Endpoints Status",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/actuator/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["actuator", "health"]
 						}
 					}
 				}

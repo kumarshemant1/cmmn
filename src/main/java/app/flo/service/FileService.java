@@ -32,17 +32,30 @@ public class FileService {
     }
     
     public BusinessFile uploadFile(Long taskId, MultipartFile file, Boolean retainFile, Boolean keepVersion, Boolean keepHistory) throws IOException {
+        System.out.println("FileService.uploadFile called - TaskId: " + taskId);
+        
         Task task = taskRepository.findById(taskId).orElse(null);
-        if (task == null) return null;
+        if (task == null) {
+            System.err.println("Task not found with ID: " + taskId);
+            return null;
+        }
+        
+        System.out.println("Task found: " + task.getName());
         
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
+            System.out.println("Created upload directory: " + uploadPath);
         }
         
         String fileName = file.getOriginalFilename();
+        if (fileName == null || fileName.isEmpty()) {
+            throw new IOException("File name is null or empty");
+        }
+        
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
+        System.out.println("File saved to: " + filePath);
         
         BusinessFile businessFile = new BusinessFile();
         businessFile.setBusinessFileName(fileName);
@@ -54,7 +67,9 @@ public class FileService {
         businessFile.setKeepVersion(keepVersion != null ? keepVersion : false);
         businessFile.setKeepHistory(keepHistory != null ? keepHistory : false);
         
-        return businessFileRepository.save(businessFile);
+        BusinessFile saved = businessFileRepository.save(businessFile);
+        System.out.println("BusinessFile saved with ID: " + saved.getId());
+        return saved;
     }
     
     public List<BusinessFile> getFilesByTask(Long taskId) {
