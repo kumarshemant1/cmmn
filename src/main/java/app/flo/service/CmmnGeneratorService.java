@@ -13,6 +13,12 @@ public class CmmnGeneratorService {
     private final String cmmnDir = "src/main/resources/processes/";
     
     public String generateCmmnContent(WorkflowDefinitionRequest request) {
+        String cmmnContent = buildCmmnXml(request);
+        saveCmmnFile(request.getName(), cmmnContent);
+        return cmmnContent;
+    }
+    
+    private String buildCmmnXml(WorkflowDefinitionRequest request) {
         StringBuilder cmmn = new StringBuilder();
         
         cmmn.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -50,5 +56,36 @@ public class CmmnGeneratorService {
         cmmn.append("</definitions>");
         
         return cmmn.toString();
+    }
+    
+    private void saveCmmnFile(String workflowName, String cmmnContent) {
+        try {
+            Path cmmnPath = Paths.get(cmmnDir);
+            if (!Files.exists(cmmnPath)) {
+                Files.createDirectories(cmmnPath);
+            }
+            
+            String fileName = workflowName.replaceAll("\\s+", "_").toLowerCase() + ".cmmn";
+            Path filePath = cmmnPath.resolve(fileName);
+            
+            Files.write(filePath, cmmnContent.getBytes());
+            System.out.println("CMMN file saved: " + filePath);
+        } catch (IOException e) {
+            System.err.println("Failed to save CMMN file: " + e.getMessage());
+        }
+    }
+    
+    public String getCmmnContent(String workflowName) {
+        try {
+            String fileName = workflowName.replaceAll("\\s+", "_").toLowerCase() + ".cmmn";
+            Path filePath = Paths.get(cmmnDir).resolve(fileName);
+            
+            if (Files.exists(filePath)) {
+                return Files.readString(filePath);
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to read CMMN file: " + e.getMessage());
+        }
+        return null;
     }
 }

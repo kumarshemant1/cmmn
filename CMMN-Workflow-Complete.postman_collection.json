@@ -251,6 +251,17 @@
 							"path": ["api", "cmmn", "1"]
 						}
 					}
+				},
+				{
+					"name": "4.6 Download CMMN File",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/cmmn/1/download",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cmmn", "1", "download"]
+						}
+					}
 				}
 			]
 		}
